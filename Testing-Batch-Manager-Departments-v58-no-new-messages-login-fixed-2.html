@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="si">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Testing Batch Manager – Department Login Preview</title>
+<meta name="theme-color" content="#0b1220">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#0b1220;color:#eef2ff;font-family:system-ui,"Noto Sans Sinhala",sans-serif}
+.panel{background:#121e31;border:1px solid #293a53;border-radius:16px}.field{width:100%;background:#091426;border:1px solid #34445d;border-radius:11px;padding:12px;color:white;min-height:46px;font-size:15px}
+.btn{border-radius:11px;padding:11px 14px;font-weight:750;min-height:44px}.muted{font-size:12px;color:#a8b6ca}.hidden{display:none!important}
+.navbtn{background:#17263b;color:#cbd5e1;border:1px solid #30415b}.navbtn.active{background:#2563eb;color:white;border-color:#3b82f6}
+.card{background:#0b1729;border:1px solid #2b3d57;border-radius:13px;padding:13px}.badge{font-size:11px;font-weight:800;padding:5px 9px;border-radius:99px}
+@media(max-width:640px){header{padding-top:calc(12px + env(safe-area-inset-top))}.btn{font-size:13px}main{padding-bottom:30px}.navgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+</style>
+</head>
+<body>
+<header class="relative bg-slate-950 border-b border-slate-800 px-3 py-2">
+ <div class="max-w-6xl mx-auto flex justify-between items-center gap-2">
+  <div class="min-w-0"><div class="font-black text-sm sm:text-lg leading-tight">🧪 TESTING BATCH MANAGER</div><div class="muted">Quality Lab • Dye House • Inspection</div><div class="flex items-center gap-2 mt-1"><span class="muted">Auto Shift:</span><span id="currentShift" class="badge bg-emerald-700 text-white">TEAM A • DAY</span></div></div>
+  <div class="flex items-center gap-1 flex-wrap justify-end"><button class="btn navbtn !min-h-9 !py-2 !px-2 text-xs" onclick="showDepartment('home')">⌂ මුල් පිටුව</button><button class="btn navbtn !min-h-9 !py-2 !px-2 text-xs" onclick="openPasswordChange()">🔑 Password</button><button class="btn navbtn !min-h-9 !py-2 !px-2 text-xs" onclick="logout()">Logout</button><span class="badge bg-amber-500/20 text-amber-300">DESIGN PREVIEW</span></div>
+ </div>
+</header>
+<section id="loginScreen" class="max-w-lg mx-auto p-4 mt-8">
+ <div class="panel p-5 space-y-4">
+  <div class="text-center"><div class="text-3xl">🔐</div><h1 id="loginTitle" class="text-xl font-black mt-2 select-none">Department Login</h1>
+<p id="creatorCredit" class="text-[10px] text-slate-400 mt-1 tracking-wide select-none">Created by Mohan Sanjeewa</p><p class="muted mt-1">එක් Department එකකට එක් Login එකක්</p></div>
+  <label class="block text-sm text-slate-300">Department එක තෝරන්න
+   <select id="loginDept" class="field mt-1"><option value="lab">QUALITY LAB</option><option value="dye">DYE HOUSE</option><option value="inspection">INSPECTION</option></select>
+  </label>
+  <label class="block text-sm text-slate-300">Password
+   <input id="loginPassword" class="field mt-1" type="password" placeholder="Department Password">
+  </label>
+  <button id="loginButton" class="btn bg-blue-600 w-full">Login වෙන්න</button>
+
+  <p id="loginMessage" class="muted text-center">Preview Login පමණි. සැබෑ ආරක්ෂිත Login සඳහා Firebase Authentication අවශ්‍යයි.</p>
+ </div>
+</section>
+<main id="appMain" class="max-w-6xl mx-auto p-3 sm:p-5 space-y-4 hidden">
+ <section class="panel p-3 grid grid-cols-2 sm:grid-cols-5 gap-2" id="stats"></section>
+ <section class="grid sm:grid-cols-3 gap-3" id="departments">
+  <button class="panel p-4 text-left border-l-4 border-cyan-500" onclick="showDepartment('dye')"><div class="text-2xl">🏭</div><b class="text-lg">DYE HOUSE</b><p class="muted mt-1">Failed Batch බලන්න • Reprocess Request යවන්න</p><div class="text-xs mt-3 text-cyan-300">අංශය විවෘත කරන්න →</div></button>
+  <button class="panel p-4 text-left border-l-4 border-amber-500" onclick="showDepartment('lab')"><div class="text-2xl">🧪</div><b class="text-lg">QUALITY LAB</b><p class="muted mt-1">Batch Number ඇතුළත් කිරීම • විස්තර Lookup • FAILED / PENDING / TESTING OK</p><div class="text-xs mt-3 text-amber-300">අංශය විවෘත කරන්න →</div></button>
+  <button class="panel p-4 text-left border-l-4 border-emerald-500" onclick="showDepartment('inspection')"><div class="text-2xl">🔍</div><b class="text-lg">INSPECTION</b><p class="muted mt-1">Testing OK Batch පරීක්ෂා කිරීම • Archive</p><div class="text-xs mt-3 text-emerald-300">අංශය විවෘත කරන්න →</div></button>
+ </section>
+ <div id="deptHeader" class="panel p-3 hidden"><div class="flex justify-between items-center gap-2"><div><b id="deptTitle" class="text-lg"></b><p id="deptDesc" class="muted"></p></div><button class="btn navbtn" onclick="showDepartment('home')">← අංශ තෝරන්න</button></div></div>
+ <nav class="navgrid grid grid-cols-2 sm:grid-cols-4 gap-2 hidden" id="nav">
+  <button class="btn navbtn active" data-tab="entry">＋ Batch ඇතුළත් කරන්න</button>
+  <button class="btn navbtn" data-tab="failed">🔴 Failed List</button>
+  <button class="btn navbtn" data-tab="pending">🟡 Pending</button>
+  <button class="btn navbtn" data-tab="testingDelay">⏰ Testing Delay</button>
+  <button class="btn navbtn" data-tab="shadeRejected">🚫 Shade Pending Rejected</button>
+  <button class="btn navbtn" data-tab="ok">🟢 Testing OK</button>
+  <button class="btn navbtn" data-tab="requests">🔁 Reprocess Requests</button>
+  <button class="btn navbtn" data-tab="archive">🗄 Inspection In</button>
+<button class="btn navbtn" data-tab="inspectionReturn">↩️ Inspection Return</button>
+<button class="btn navbtn" data-tab="returnRequests">📨 Return Requests</button>
+<button class="btn navbtn" data-tab="myReturns">🛠️ My Return Batches</button>
+  <button class="btn navbtn" data-tab="history">📋 Batch History</button>
+ </nav>
+ <section id="entry" class="panel p-4 space-y-3"><div class="badge bg-amber-500/20 text-amber-300">QUALITY LAB ONLY</div>
+  <div><h2 class="font-bold text-lg">QUALITY LAB – SHADE APPROVAL</h2><p class="muted">මුලින් Batch Number එක ඇතුළත් කර Batch විස්තර ලබාගෙන Shade පරීක්ෂා කර SHADE OK හෝ SHADE PENDING තෝරන්න.</p></div>
+  <div class="grid sm:grid-cols-2 gap-2"><input id="batchNo" class="field" placeholder="Batch Number"><button id="lookup" class="btn bg-blue-600">DYEING PRO Batch Lookup</button></div>
+  <p id="lookupMsg" class="muted">Preview Mode: Firebase සම්බන්ධ කළ පසු Batch Number එකෙන් Colour, Fabric Code, Style සහ Weight ස්වයංක්‍රීයව පිරේ.</p>
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+   <label class="muted">COLOUR<input id="colour" class="field mt-1" placeholder="Colour"></label>
+   <label class="muted">FABRIC CODE<input id="fabric" class="field mt-1" placeholder="Fabric Code"></label>
+   <label class="muted">STYLE<input id="style" class="field mt-1" placeholder="Style"></label>
+   <label class="muted">WGT (WEIGHT)<input id="weight" class="field mt-1" placeholder="Weight"></label>
+  </div>
+  <div class="grid sm:grid-cols-2 gap-2">
+   <label class="muted">Shade Status<select id="status" class="field mt-1"><option value="SHADE OK">SHADE OK</option><option value="SHADE PENDING">SHADE PENDING</option></select></label>
+   <label class="muted">Testing අවසන් කිරීමට පැය ගණන (SHADE OK සඳහා අනිවාර්යයි)<input id="testingHours" class="field mt-1" type="number" min="1" max="168" step="1" required placeholder="උදා: 2"></label>
+   <label class="muted">Comment<input id="comment" class="field mt-1" placeholder="අමතර විස්තර"></label>
+  </div>
+  <button id="save" class="btn bg-emerald-600 w-full">Save Shade Decision</button>
+  <div class="border-t border-cyan-700 pt-4 mt-4">
+   <h3 class="font-bold text-lg text-cyan-300">🎨 Testing OK වූ Shade Pending Batch – නැවත Shade Approval</h3>
+   <p class="muted mt-1 mb-3">Testing OK වූ පසු Batch එක මෙතැන පෙන්වයි. Shade Approver විසින් SHADE OK තහවුරු කළ පසු පමණක් Testing OK ලැයිස්තුවට යයි.</p>
+   <div id="shadeReapprovalQueue"></div>
+  </div>
+  <div id="adminBulkPanel" class="border-t border-amber-700 pt-3 space-y-2 hidden">
+<b class="text-sm text-amber-300">ADMIN – එකවර Batch කිහිපයක් ඇතුළත් කිරීම</b>
+<p class="muted text-xs">එක් පේළියකට Batch Number එකක් දමා, ඇතුළත් කළ යුතු ලැයිස්තුව තෝරන්න.</p>
+<select id="adminBulkStatus" class="field">
+<option value="SHADE PENDING">SHADE PENDING</option><option value="SHADE OK – LAB CONFIRM REQUIRED">SHADE OK – LAB CONFIRM REQUIRED</option><option value="PENDING">TESTING PENDING</option><option value="TESTING OK">TESTING OK</option><option value="FAILED">TESTING FAILED</option>
+</select>
+<textarea id="bulk" class="field" rows="4" placeholder="Batch Number 1&#10;Batch Number 2&#10;Batch Number 3"></textarea>
+<button id="bulkSave" class="btn bg-amber-600 w-full">තෝරාගත් ලැයිස්තුවට Batch එකතු කරන්න</button></div>
+ </section>
+ <section id="shadeOk" class="tab panel p-4 hidden"><h2 class="font-bold text-lg mb-2">🟢 Shade OK – Lab Confirmation</h2><p class="muted mb-3">Shade OK වූ Batch විස්තර බලලා Lab Confirmation කරන්න. Confirm කළ පසු Testing Pending වෙත යයි.</p><p class="muted mb-3">Testing OK වූ Shade Pending Batch මෙහි පැමිණේ. Shade Approver විසින් SHADE OK තහවුරු කළ පසු පමණක් Testing OK ලැයිස්තුවට යයි.</p><div id="shadeOkList"></div></section>
+ <section id="shadePending" class="tab panel p-4 hidden"><h2 class="font-bold text-lg mb-2">🟠 Shade Pending List</h2><p class="muted mb-3">Dye House එකෙන් Shade Pending Batch පරීක්ෂා කර Testing Request හෝ RPS Reject කරන්න.</p><div id="shadePendingList"></div></section>
+ <section id="rps" class="tab panel p-4 hidden"><h2 class="font-bold text-lg mb-2">🔴 Shade Reject – RPS List</h2><p class="muted mb-3">Shade Reject වූ Batch වෙනම මෙහි පෙන්වයි.</p><div id="rpsList"></div></section>
+ <section id="shadeRejected" class="tab panel p-4 hidden"><h2 class="font-bold text-lg mb-2">🚫 SHADE PENDING REJECTED – RECORD LIST</h2><p class="muted mb-3">Dye House එකෙන් Shade Pending Reject කළ සියලු Batch මෙහි ස්ථිර වාර්තාවක් ලෙස පෙන්වයි. පසුව වෙනත් Status එකකට ගියත් Reject වාර්තාව පවතී.</p><div id="shadeRejectedList"></div></section>
+ <section id="failed" class="tab panel p-4 hidden"><h2 class="font-bold text-lg mb-2">🔴 Testing Failed</h2><p class="muted mb-3" id="failedHelp">Batch එක තෝරා අදාළ ක්‍රියාව කරන්න.</p><div id="failedList"></div></section>
+ <section id="pending" class="tab panel p-4 hidden"><h2 class="font-bold text-lg mb-2">🟡 Testing Pending</h2><p class="muted mb-3">Batch විස්තරය විවෘත කර Lab තීරණය Update කරන්න.</p><div id="pendingList"></div></section>
+ <section id="testingDelay" class="tab panel p-4 hidden"><h2 class="font-bold text-lg mb-2">⏰ Testing Delay List</h2><p class="muted mb-3">නියමිත පැය ගණන ඉක්මවා තවම Testing ප්‍රතිඵලයක් නොදුන් Batch මෙහි පෙන්වයි.</p><div id="testingDelayList"></div></section>
+ <section id="ok" class="tab panel p-4 hidden"><h2 class="font-bold text-lg mb-3">🟢 Testing OK</h2><div id="okList"></div></section>
+ <section id="requests" class="tab panel p-4 hidden"><h2 class="font-bold text-lg mb-3">🔁 Reprocess Requests</h2><div id="requestList"></div></section>
+ <section id="archive" class="tab panel p-4 hidden"><h2 class="font-bold text-lg mb-3">🗄 Inspection In</h2><p class="muted mb-3">Inspection භාරගත් Batch මෙහි පෙන්වයි. මාස 3 retention ක්‍රියාවලිය අවසන් App එකේ සකස් කරමු.</p><div id="archiveList"></div></section>
+ <section id="returnRequests" class="tab panel p-4 hidden"><h2 class="font-bold text-lg mb-3">📨 Inspection In Requests – Approval</h2><div id="returnRequestsList"></div></section>
+<section id="myReturns" class="tab panel p-4 hidden"><h2 class="font-bold text-lg mb-3">🛠️ My Inspection Return Batches</h2><div id="myReturnsList"></div></section>
+<section id="inspectionReturn" class="tab panel p-4 hidden"><h2 class="font-bold text-lg mb-3">↩️ Inspection Return</h2><p class="muted mb-3">Inspection වෙතින් දෝෂයක් නිසා නැවත භාරදුන් Batch වෙනම පෙන්වයි. භාරදුන් අංශය සහ හේතුව මෙහි සටහන් වේ.</p><div id="inspectionReturnList"></div></section>
+ <section id="history" class="tab panel p-4 hidden"><h2 class="font-bold text-lg mb-3">📋 Batch History</h2><input id="historySearch" class="field mb-3" placeholder="Batch Number සොයන්න"><div id="historyList"></div></section>
+ <section id="batchHistory" class="tab panel p-4 hidden"><div class="flex justify-between items-center gap-2"><h2 class="font-bold text-lg">📚 Batch සම්පූර්ණ ඉතිහාසය</h2><button class="btn navbtn" onclick="goBackFromBatchHistory()">← ආපසු</button></div><div id="batchHistoryDetails" class="mt-3"></div></section>
+ <section id="report" class="tab panel p-4 hidden">
+  <div class="flex flex-wrap justify-between gap-2 items-center"><div><h2 id="reportTitle" class="font-bold text-lg">Batch Report</h2><p class="muted">තෝරාගත් තත්ත්වයේ Batch විස්තර</p></div><div class="flex gap-2"><button class="btn bg-emerald-700" onclick="exportReport()">Excel ගන්න</button><button class="btn bg-blue-700" onclick="printReport()">Print</button></div></div>
+  <input id="reportSearch" class="field my-3" placeholder="Batch Number / Colour / Style සොයන්න"><div id="reportList"></div>
+ </section>
+ <p class="muted text-center">මෙය Preview Version එකකි. Login PIN, දත්ත සහ වේලාව තවම මේ Browser එකේ පමණි; Server Time / Firebase Sync සම්බන්ධ කර නැත.</p>
+</main>
+<dialog id="labDecision" class="rounded-2xl p-0 bg-slate-900 text-white border border-slate-600 w-[92%] max-w-md">
+ <div class="p-4 space-y-3">
+  <div class="flex justify-between items-center"><b class="text-lg">QUALITY LAB – Batch තීරණය</b><button class="btn" onclick="closeLabDecision()">✕</button></div>
+  <div id="labDecisionDetails" class="card"></div>
+  <p class="muted">මෙම Batch එකේ තත්ත්වය තෝරන්න.</p>
+  <div id="labDecisionChoices" class="grid grid-cols-2 gap-2"></div>
+ </div>
+</dialog>
+<dialog id="shadeRecheckDialog" class="rounded-2xl p-0 bg-slate-900 text-white border border-slate-600 w-[92%] max-w-md">
+ <div class="p-4 space-y-3">
+  <div class="flex justify-between items-center"><b class="text-lg">Shade Re-Approval</b><button class="btn" onclick="closeShadeRecheck()">✕</button></div>
+  <div id="shadeRecheckDetails" class="card"></div>
+  <p class="muted">මෙම Batch එක Testing OK වී ඇත. අවසාන Shade Approval එක ලබා දුන් පසු පමණක් Testing OK ලැයිස්තුවට යයි.</p>
+  <div class="grid grid-cols-1 gap-2">
+   <button class="btn bg-emerald-700" onclick="saveShadeRecheck('OK')">🟢 SHADE OK – තහවුරු කර Testing OK වෙත</button>
+   <button class="btn bg-amber-600" onclick="saveShadeRecheck('PENDING')">🟡 SHADE PENDING – නැවත Shade Pending වෙත</button>
+   <button class="btn bg-rose-700" onclick="saveShadeRecheck('REJECT')">🔴 REJECT – App එකෙන් ඉවත් කරන්න</button>
+  </div>
+ </div>
+</dialog>
+<dialog id="inspectionReturnDialog" class="rounded-2xl p-0 bg-slate-900 text-white border border-slate-600 w-[92%] max-w-md">
+ <div class="p-4 space-y-3">
+  <div class="flex justify-between items-center"><b class="text-lg">↩️ Inspection Return</b><button class="btn" onclick="closeInspectionReturn()">✕</button></div>
+  <label class="block text-sm">නැවත භාරදිය යුතු අංශය
+   <select id="inspectionReturnDepartment" class="field mt-1">
+    <option value="DYE HOUSE">DYE HOUSE</option>
+    <option value="KNITTING">KNITTING</option>
+    <option value="DEVELOPMENT">DEVELOPMENT</option>
+    <option value="LAB">LAB</option>
+   </select>
+  </label>
+  <label class="block text-sm">Defect / නැවත භාරදීමට හේතුව
+   <textarea id="inspectionReturnReason" class="field mt-1" rows="3" placeholder="Defect එක හෝ හේතුව ලියන්න"></textarea>
+  </label>
+  <div class="flex gap-2"><button class="btn bg-amber-700 flex-1" onclick="saveInspectionReturn()">Save Return</button><button class="btn navbtn" onclick="closeInspectionReturn()">Cancel</button></div>
+ </div>
+</dialog>
+<dialog id="passwordChangeDialog" class="rounded-2xl p-0 bg-slate-900 text-white border border-slate-600 w-[92%] max-w-md">
+ <div class="p-4 space-y-3">
+  <div class="flex justify-between items-center"><b class="text-lg">🔑 Department Password වෙනස් කිරීම</b><button class="btn" onclick="closePasswordChange()">✕</button></div>
+  <p id="passwordChangeScope" class="muted">ඔබගේ Department Password එක වෙනස් කරන්න.</p>
+  <label id="passwordTargetWrap" class="block text-sm hidden">වෙනස් කළ යුතු Department එක
+   <select id="passwordTargetDept" class="field mt-1"><option value="lab">QUALITY LAB</option><option value="dye">DYE HOUSE</option><option value="inspection">INSPECTION</option></select>
+  </label>
+  <label class="block text-sm">දැනට භාවිතා කරන Password<input id="oldDeptPassword" class="field mt-1" type="password" autocomplete="current-password"></label>
+  <label class="block text-sm">අලුත් Password<input id="newDeptPassword" class="field mt-1" type="password" autocomplete="new-password" placeholder="අවම අක්ෂර 6ක්"></label>
+  <label class="block text-sm">අලුත් Password එක නැවත ඇතුළත් කරන්න<input id="confirmDeptPassword" class="field mt-1" type="password" autocomplete="new-password"></label>
+  <p id="passwordChangeMessage" class="muted text-sm"></p>
+  <button class="btn bg-emerald-600 w-full" onclick="saveDepartmentPassword()">Password Save කරන්න</button>
+ </div>
+</dialog>
+<script>
+const KEY='tbm_design_preview_v1';
+// v52 fresh testing setup: clear old preview Batch records and read markers once; keep department passwords/settings.
+const V52_RESET_KEY='tbm_v52_test_data_reset_done';
+if(!localStorage.getItem(V52_RESET_KEY)){localStorage.removeItem(KEY);localStorage.setItem(V52_RESET_KEY,'1')}
+let records={};try{records=JSON.parse(localStorage.getItem(KEY)||'{}')}catch(e){}
+
+const $=id=>document.getElementById(id);
+let activeDept='home';
+let loggedInDept=null;
+const DEFAULT_PREVIEW_CODES={lab:'LAB123',dye:'DYE123',inspection:'INS123',admin:'ADMIN123'};
+let PREVIEW_CODES={...DEFAULT_PREVIEW_CODES};
+try{const savedCodes=JSON.parse(localStorage.getItem('tbm_department_passwords_v1')||'{}');for(const d of Object.keys(DEFAULT_PREVIEW_CODES)){if(typeof savedCodes[d]==='string'&&savedCodes[d])PREVIEW_CODES[d]=savedCodes[d];}}catch(e){}
+function openPasswordChange(){
+ if(!loggedInDept){alert('පළමුව Login වෙන්න.');return}
+ $('oldDeptPassword').value='';$('newDeptPassword').value='';$('confirmDeptPassword').value='';
+ const isAdmin=loggedInDept==='admin';
+ $('passwordTargetWrap').classList.toggle('hidden',!isAdmin);
+ $('passwordChangeScope').textContent=isAdmin?'ADMIN ලෙස Login වී ඇති නිසා Department තුනෙන් ඕනෑම එකක Password වෙනස් කළ හැක.':'ඔබගේ Department Password එක පමණක් වෙනස් කළ හැක.';
+ if(isAdmin)$('passwordTargetDept').value='lab';
+ $('passwordChangeMessage').textContent='';
+ $('passwordChangeDialog').showModal();
+}
+function closePasswordChange(){ $('passwordChangeDialog').close(); }
+function saveDepartmentPassword(){
+ const oldPin=$('oldDeptPassword').value,newPin=$('newDeptPassword').value,confirmPin=$('confirmDeptPassword').value;
+ const targetDept=loggedInDept==='admin' ? $('passwordTargetDept').value : loggedInDept;
+ if(oldPin!==PREVIEW_CODES[loggedInDept]){$('passwordChangeMessage').textContent='ඔබගේ දැනට ඇති Login Password එක වැරදියි.';return}
+ if(newPin.length<6){$('passwordChangeMessage').textContent='අලුත් Password එක අවම අක්ෂර 6ක් විය යුතුයි.';return}
+ if(newPin!==confirmPin){$('passwordChangeMessage').textContent='අලුත් Password දෙක ගැළපෙන්නේ නැහැ.';return}
+ PREVIEW_CODES[targetDept]=newPin;
+ localStorage.setItem('tbm_department_passwords_v1',JSON.stringify(PREVIEW_CODES));
+ $('passwordChangeMessage').textContent=DEPT_NAMES[targetDept]+' Password සාර්ථකව වෙනස් කළා. ඊළඟ Login එකේදී අලුත් Password එක භාවිතා කරන්න.';
+ $('oldDeptPassword').value='';$('newDeptPassword').value='';$('confirmDeptPassword').value='';
+}
+const DEPT_NAMES={lab:'QUALITY LAB',dye:'DYE HOUSE',inspection:'INSPECTION',admin:'ADMIN'};
+// ADMIN Login option is hidden from the normal department list.
+// Secret access: tap the "Department Login" heading five times within a short interval.
+let adminTapCount=0,adminTapTimer=null;
+function revealAdminLogin(){
+ adminTapCount++;
+ if(adminTapTimer) clearTimeout(adminTapTimer);
+ adminTapTimer=setTimeout(()=>{adminTapCount=0;},5000);
+ if(adminTapCount>=5){
+  adminTapCount=0;
+  const sel=document.getElementById('loginDept');
+  let opt=Array.from(sel.options).find(o=>o.value==='admin');
+  if(!opt){opt=document.createElement('option');opt.value='admin';opt.textContent='ADMIN';sel.appendChild(opt);}
+  sel.value='admin';
+  document.getElementById('loginMessage').textContent='ADMIN Login සක්‍රීයයි. දැන් ADMIN Password එක ඇතුළත් කරන්න.';
+  document.getElementById('loginPassword').focus();
+ }
+}
+['loginTitle','creatorCredit'].forEach(id=>{
+ const el=document.getElementById(id);
+ el.style.userSelect='none';el.style.webkitUserSelect='none';el.style.touchAction='manipulation';
+ el.addEventListener('pointerdown',e=>{e.preventDefault();revealAdminLogin();});
+});
+function login(){
+ const d=$('loginDept').value, pin=$('loginPassword').value;
+ if(pin!==PREVIEW_CODES[d]){$('loginMessage').textContent='Password වැරදියි. නැවත උත්සාහ කරන්න.';return}
+ loggedInDept=d;$('loginPassword').value='';
+ $('loginScreen').classList.add('hidden');$('appMain').classList.remove('hidden');
+ document.querySelector('header').classList.remove('hidden');
+ if(d==='admin'){showDepartment('home')}else{showDepartment(d)}
+}
+function logout(){
+ loggedInDept=null;activeDept='home';document.querySelector('header').classList.add('hidden');$('appMain').classList.add('hidden');
+ $('loginScreen').classList.remove('hidden');$('loginPassword').value='';
+ $('loginMessage').textContent='Logout වුණා. නැවත Login වෙන්න.';
+}
+$('loginButton').onclick=login;
+$('loginPassword').addEventListener('keydown',e=>{if(e.key==='Enter')login()});
+document.querySelector('header').classList.add('hidden');
+function showDepartment(d){
+ if(!loggedInDept){$('loginScreen').classList.remove('hidden');$('appMain').classList.add('hidden');return}
+ if(loggedInDept!=='admin'&&d!=='home'&&d!==loggedInDept){alert('මෙම Login එකට මෙම Department එකට අවසර නැහැ.');return}
+ activeDept=d;
+ $('departments').classList.toggle('hidden',d!=='home');
+ $('deptHeader').classList.toggle('hidden',d==='home');
+ $('nav').classList.toggle('hidden',d==='home');
+ if(d==='home'){
+  document.querySelectorAll('#departments button').forEach(b=>{
+   const m=b.getAttribute('onclick').match(/showDepartment\('([^']+)'\)/);
+   const target=m?m[1]:'';
+   b.classList.toggle('hidden',!!loggedInDept&&loggedInDept!=='admin'&&target!==loggedInDept);
+  });
+  openTab('none');return
+ }
+ const info={dye:['🏭 DYE HOUSE','Failed Batch පරීක්ෂා කර Reprocess Request යැවීම'],lab:['🧪 QUALITY LAB','මුලින් Shade Approval; පසුව Lab Confirmation සහ Testing'],inspection:['🔍 INSPECTION','Testing OK Batch භාරගෙන Archive කිරීම']};
+ $('deptTitle').textContent=info[d][0]; $('deptDesc').textContent=info[d][1];
+ $('adminBulkPanel').classList.toggle('hidden',loggedInDept!=='admin');
+ const allowed={dye:['shadePending','rps','shadeRejected','failed','requests','testingDelay','ok','archive','myReturns','history'],lab:['entry','shadeOk','shadePending','pending','failed','requests','myReturns','history'],inspection:['ok','archive','inspectionReturn','returnRequests','history']};
+ const labels={
+  dye:{shadePending:'🟠 Shade Pending List',rps:'🔴 Shade Reject / RPS',shadeRejected:'🚫 Shade Pending Rejected',failed:'🔴 Testing Failed',requests:'🔁 Reprocess Requests',testingDelay:'⏰ Testing Delay',ok:'🟢 Testing OK',archive:'📥 QA IN',myReturns:'🛠️ My Return Batches',history:'📋 Batch History'},
+  lab:{entry:'🎨 Shade Approval',shadeOk:'🟢 Shade OK – Confirm',shadePending:'🟠 Shade Pending',pending:'🟡 Testing Pending',failed:'🔴 Testing Failed',requests:'📨 Dye House Requests',history:'📋 Lab History'},
+  inspection:{ok:'🟢 Testing OK',archive:'🗄 Inspection In',inspectionReturn:'↩️ Inspection Return',returnRequests:'📨 Return Requests – Approval'}
+ };
+ document.querySelectorAll('.navbtn[data-tab]').forEach(b=>{
+  const tab=b.dataset.tab;
+  b.classList.toggle('hidden',!allowed[d].includes(tab));
+  if(labels[d][tab]) b.textContent=labels[d][tab];
+ });
+ $('failed').querySelector('h2').textContent=d==='lab'?'🔴 QUALITY LAB – Failed Badge Update':'🔴 DYE HOUSE – Failed Batches';
+ $('pending').querySelector('h2').textContent='🟡 QUALITY LAB – Testing Pending';
+ $('failedHelp').textContent=d==='lab'?'මෙහි Failed Badge එකේ Batch එක තෝරා Lab Badge Update බොත්තම ඔබන්න.':'Dye House Failed Batch මෙහි පෙන්වයි. Reprocess Request යවන්න.';
+ $('requests').querySelector('h2').textContent=d==='lab'?'📨 QUALITY LAB – Dye House Requests':'🔁 DYE HOUSE – Reprocess Requests';
+ $('ok').querySelector('h2').textContent=d==='dye'?'🟢 DYE HOUSE – Testing OK':'🟢 Testing OK';
+ $('archive').querySelector('h2').textContent=d==='dye'?'📥 DYE HOUSE – QA IN':'🗄 Inspection In';
+ openTab(d==='lab'?'entry':d==='dye'?'shadePending':allowed[d][0]);
+ render();
+}
+
+const safe=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const SHIFT_PATTERN=['DAY','DAY','DAY','NIGHT','NIGHT','OFF','OFF','OFF','DAY','DAY','NIGHT','NIGHT','NIGHT','OFF','OFF'];
+const SHIFT_OFFSETS={A:0,B:10,C:5};
+// Preview defaults to Team A. In the Firebase version, this value must come from the signed-in staff profile.
+function selectedShiftTeam(){return 'A'}
+function shiftDateForEvent(date){const d=new Date(date);const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Colombo',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',hourCycle:'h23'}).formatToParts(d);const v=Object.fromEntries(parts.map(p=>[p.type,p.value]));let y=+v.year,m=+v.month-1,day=+v.day;if(+v.hour<7){const prev=new Date(Date.UTC(y,m,day)-86400000);y=prev.getUTCFullYear();m=prev.getUTCMonth();day=prev.getUTCDate()}return new Date(y,m,day,12,0,0)}
+function shiftForTeam(team,date){const d=shiftDateForEvent(date);const delta=Math.round((Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())-Date.UTC(2026,0,1))/86400000);return SHIFT_PATTERN[((delta+(SHIFT_OFFSETS[team]||0))%15+15)%15]}
+function shiftLabel(shift){return shift==='DAY'?'DAY (07:00–19:00)':shift==='NIGHT'?'NIGHT (19:00–07:00)':'OFF'}
+function updateCurrentShift(){const team=selectedShiftTeam(),now=new Date(),shift=shiftForTeam(team,now);const el=$('currentShift');if(el){el.textContent='TEAM '+team+' • '+shiftLabel(shift);el.className='badge '+(shift==='DAY'?'bg-emerald-700':shift==='NIGHT'?'bg-blue-700':'bg-amber-700')+' text-white'}}
+function persist(){
+ const team=selectedShiftTeam();
+ Object.values(records).forEach(r=>{
+  (r.history||[]).forEach(h=>{
+   if(!h.shiftTeam){const eventDate=new Date(h.at||r.updatedAt||Date.now());h.shiftTeam=team;h.shiftName=shiftForTeam(team,eventDate);h.localDateTime=eventDate.toLocaleString('en-GB',{timeZone:'Asia/Colombo'});}
+   if(!h.department)h.department=DEPT_NAMES[activeDept]||'PREVIEW';
+  });
+  if(r.updatedAt){const eventDate=new Date(r.updatedAt);r.lastShiftTeam=team;r.lastShiftName=shiftForTeam(team,eventDate);}
+ });
+ localStorage.setItem(KEY,JSON.stringify(records));render();updateCurrentShift();
+}
+function openTab(id){document.querySelectorAll('main>section.tab, main>#entry').forEach(x=>x.classList.toggle('hidden',x.id!==id));document.querySelectorAll('.navbtn').forEach(b=>b.classList.toggle('active',b.dataset.tab===id))}
+document.querySelectorAll('.navbtn[data-tab]').forEach(b=>b.onclick=()=>openTab(b.dataset.tab));
+$('lookup').onclick=()=>{$('lookupMsg').textContent='Preview Mode: Firebase Lookup තවම සම්බන්ධ කර නැහැ. Colour, Fabric Code, Style සහ Weight අතින් ඇතුළත් කරන්න.'};
+function add(no,vals){let old=records[no],r=old||{batchNo:no,failCount:0,history:[],createdAt:Date.now()};Object.assign(r,vals,{batchNo:no,updatedAt:Date.now()});if(vals.status==='FAILED'&&(!old||old.status!=='FAILED'))r.failCount=(r.failCount||0)+1;r.history.push({status:vals.status,at:Date.now(),comment:vals.comment||''});records[no]=r;persist()}
+$('save').onclick=()=>{let no=$('batchNo').value.trim().toUpperCase();if(!no)return alert('Batch Number ඇතුළත් කරන්න');let old=records[no];let r=old||{batchNo:no,failCount:0,history:[],createdAt:Date.now()};const shadeChoice=$('status').value;const hoursRaw=$('testingHours').value.trim();const hours=Number(hoursRaw);if(shadeChoice==='SHADE OK'&&(!hoursRaw||!Number.isFinite(hours)||hours<1||hours>168))return alert('SHADE OK කිරීමට පෙර Testing අවසන් කළ යුතු පැය ගණන 1 සිට 168 අතර ඇතුළත් කරන්න.');Object.assign(r,{colour:$('colour').value,fabric:$('fabric').value,style:$('style').value,weight:$('weight').value,shadeStatus:shadeChoice,testingHours:shadeChoice==='SHADE OK'?hours:null,testingDeadlineAt:shadeChoice==='SHADE OK'?Date.now()+hours*3600000:null,testingDelayAt:null,testingDelayMinutes:null,comment:$('comment').value,updatedAt:Date.now()});r.status=r.shadeStatus==='SHADE OK'?'SHADE OK – LAB CONFIRM REQUIRED':'SHADE PENDING';r.history.push({status:r.shadeStatus,at:Date.now(),comment:r.comment||''});records[no]=r;persist();alert('Shade තීරණය Save කළා');};
+$('bulkSave').onclick=()=>{
+ if(loggedInDept!=='admin')return alert('මෙම ක්‍රියාව ADMIN සඳහා පමණයි.');
+ const nums=[...new Set($('bulk').value.split(/[\\s,;]+/).map(x=>x.trim().toUpperCase()).filter(Boolean))];
+ if(!nums.length)return alert('Batch Numbers ඇතුළත් කරන්න.');
+ const target=$('adminBulkStatus').value;
+ nums.forEach(no=>{
+  const r=records[no]||{batchNo:no,failCount:0,history:[],createdAt:Date.now()};
+  r.status=target;r.updatedAt=Date.now();
+  if(target==='SHADE PENDING'){r.shadeStatus='SHADE PENDING';r.shadeFlow='';}
+  else if(target==='SHADE OK – LAB CONFIRM REQUIRED'){r.shadeStatus='SHADE OK';r.shadeFlow='';}
+  else if(target==='PENDING'){r.testingStatus='PENDING';}
+  else if(target==='TESTING OK'){r.testingStatus='TESTING OK';}
+  else if(target==='FAILED'){r.failCount=(r.failCount||0)+1;}
+  r.history.push({status:'ADMIN BULK ADDED / SET TO '+target,at:Date.now(),department:'ADMIN'});
+  records[no]=r;
+ });
+ persist();render();$('bulk').value='';
+ alert(nums.length+' Batch තෝරාගත් ලැයිස්තුවට ඇතුළත් කළා.');
+};
+function countTag(n){return `<span class="badge ${n===1?'bg-amber-600':n===2?'bg-orange-600':n===3?'bg-rose-600':'bg-fuchsia-700'}">${n} Fail</span>`}
+function actions(r){
+ let s='';
+ if(loggedInDept==='admin'){const moveId='adminMove_'+String(r.batchNo).replace(/[^a-zA-Z0-9_-]/g,'_');s+=`<div class="mt-2 p-2 rounded-lg border border-indigo-700"><label class="text-xs block mb-1">ADMIN – අවශ්‍ය ලැයිස්තුවට කෙළින්ම මාරු කරන්න</label><select id="${moveId}" class="field text-xs"><option value="SHADE PENDING">SHADE PENDING</option><option value="SHADE OK – LAB CONFIRM REQUIRED">SHADE OK – Lab Confirm Required</option><option value="PENDING">TESTING PENDING</option><option value="TESTING OK">TESTING OK</option><option value="FAILED">TESTING FAILED</option><option value="ARCHIVED">INSPECTION IN</option></select><button class="btn bg-indigo-700 text-xs mt-2" onclick="adminMoveToStatus('${safe(r.batchNo)}','${moveId}')">➡️ ADMIN – Move Direct</button></div><button class="btn bg-rose-800 text-xs" onclick="adminDeleteBatch('${safe(r.batchNo)}')">🗑 ADMIN – Delete Batch</button>`;}
+ if(activeDept==='dye'&&r.shadeStatus==='SHADE PENDING'&&r.shadeFlow!=='RPS'&&r.shadeFlow!=='TEST_REQUEST_WAIT_LAB'&&r.shadeFlow!=='TESTING_REQUESTED')s+=`<button class="btn bg-blue-700 text-xs" onclick="dyeRequestTesting('${safe(r.batchNo)}')">Testing Request යවන්න</button><button class="btn bg-rose-700 text-xs" onclick="shadeRejectToRps('${safe(r.batchNo)}')">Shade Reject → RPS</button><button class="btn bg-slate-700 text-xs" onclick="deleteShadePending('${safe(r.batchNo)}')">Delete</button>`;
+ if(activeDept==='lab'&&r.shadeFlow==='TEST_REQUEST_WAIT_LAB')s+=`<button class="btn bg-amber-600 text-xs" onclick="confirmShadeTestingRequest('${safe(r.batchNo)}')">Lab Confirm → Testing Pending</button>`;
+ if(activeDept==='lab'&&(r.status==='SHADE RECHECK REQUIRED'||r.shadeReapprovalPending===true))s+=`<button class="btn bg-cyan-700 text-xs" onclick="openShadeRecheck('${safe(r.batchNo)}')">🎨 Shade Approver – SHADE OK / PENDING / REJECT</button>`;
+ if(activeDept==='lab'&&r.status==='SHADE OK – LAB CONFIRM REQUIRED')s+=`<button class="btn bg-emerald-700 text-xs" onclick="labConfirmShade('${safe(r.batchNo)}')">✓ Lab Confirm → Testing Pending</button>`;
+ 
+ if(activeDept==='dye'&&r.status==='FAILED'&&!r.request)s+=`<button class="btn bg-violet-700 text-xs" onclick="request('${safe(r.batchNo)}')">Reprocess Request යවන්න</button>`;
+ if(activeDept==='lab'&&r.status==='FAILED')s+=`<button class="btn bg-cyan-700 text-xs" onclick="openLabDecision('${safe(r.batchNo)}')">📝 Lab Badge Update – විස්තර / තීරණය</button>`;
+ if(activeDept==='lab'&&r.status==='PENDING')s+=`<button class="btn bg-cyan-700 text-xs" onclick="openLabDecision('${safe(r.batchNo)}')">📝 Lab තීරණය Update කරන්න</button>`;
+ if(activeDept==='inspection'&&r.status==='TESTING OK')s+=`<button class="btn bg-indigo-700 text-xs" onclick="archive('${safe(r.batchNo)}')">Inspection Accept</button>`;
+ if(activeDept==='inspection'&&r.status==='ARCHIVED')s+=`<button class="btn bg-amber-700 text-xs" onclick="inspectionReturnBatch('${safe(r.batchNo)}')">↩️ Inspection Return – නැවත භාරදෙන්න</button>`;
+ if((activeDept==='dye'||activeDept==='lab')&&r.status==='INSPECTION RETURN'&&r.inspectionReturnDepartment===DEPT_NAMES[activeDept]&&!r.inspectionReturnRequestAt)s+=`<button class="btn bg-blue-700 text-xs" onclick="requestInspectionIn('${safe(r.batchNo)}')">📨 Inspection In Request</button>`;
+ if(activeDept==='inspection'&&r.status==='INSPECTION RETURN'&&r.inspectionReturnRequestAt)s+=`<button class="btn bg-emerald-700 text-xs" onclick="approveInspectionIn('${safe(r.batchNo)}')">✓ Accept → Inspection In</button><button class="btn bg-rose-700 text-xs" onclick="rejectInspectionIn('${safe(r.batchNo)}')">✕ Reject Request</button>`;
+ return s
+}
+function liveShadeStatus(r){
+ if(r.shadeStatus==='SHADE PENDING'){
+  if(r.shadeFlow==='FINAL_SHADE_OK'||r.finalShadeApprovedAt||r.shadeFlow==='FINAL_SHADE_APPROVED')return 'SHADE OK';
+  if(r.shadeFlow==='RPS')return 'SHADE REJECTED';
+  return 'SHADE PENDING';
+ }
+ return r.shadeStatus||'NOT RECORDED';
+}
+function batchProgress(r){
+ const events=(r.history||[]).map(h=>String(h.status||'').toUpperCase());
+ const has=t=>events.some(e=>e.includes(t));
+ const steps=[
+  ['SHADE APPROVAL',has('SHADE OK')||has('SHADE PENDING')],
+  ['DYE HOUSE REQUEST',has('DYE HOUSE TESTING REQUEST SENT')],
+  ['LAB CONFIRM',has('LAB CONFIRMED SHADE PENDING TEST REQUEST')||has('LAB CONFIRMED SHADE OK')],
+  ['TESTING PENDING',has('LAB CONFIRMED')||r.status==='PENDING'||has('TESTING PENDING')],
+  ['TESTING RESULT',has('TESTING OK')||has('TESTING FAILED')],
+  ['FINAL SHADE APPROVAL',has('RETURNED TO SHADE APPROVAL')||has('SHADE APPROVER CONFIRMED')],
+  ['TESTING OK LIST',r.status==='TESTING OK'||has('MOVED TO TESTING OK LIST')],
+  ['INSPECTION',r.status==='ARCHIVED'||has('INSPECTION ACCEPTED')]
+ ];
+ let current='Current: '+(r.status==='PENDING'?'TESTING PENDING':r.status==='SHADE RECHECK REQUIRED'?'SHADE RE-APPROVAL':r.status==='SHADE TEST REQUEST – LAB CONFIRM REQUIRED'?'WAITING FOR LAB CONFIRM':r.status==='TESTING OK'?'TESTING OK':r.status==='ARCHIVED'?'INSPECTION ARCHIVE':r.status);
+ return `<div class="mt-3 p-3 rounded-xl bg-slate-900/80 border border-cyan-900"><div class="text-sm font-bold text-cyan-300 mb-2">📍 BATCH PROCESS TRACKING</div><div class="text-sm font-bold mb-2">${safe(current)}</div><div class="grid grid-cols-2 gap-1">${steps.map(([label,done])=>`<div class="text-xs ${done?'text-emerald-300':'text-slate-400'}">${done?'✓':'○'} ${label}</div>`).join('')}</div></div>`;
+}
+function testingIsComplete(r){return ['FAILED','TESTING OK'].includes(r.testingStatus)||['FAILED','TESTING OK'].includes(r.status)}
+function markTestingDelayIfOverdue(r,now=Date.now()){if(r&&r.status!=='ARCHIVED'&&r.status!=='INSPECTION RETURN'&&r.testingDeadlineAt&&!r.testingDelayAt&&!testingIsComplete(r)&&now>=r.testingDeadlineAt){r.testingDelayAt=now;r.testingDelayMinutes=Math.max(0,Math.floor((now-r.testingDeadlineAt)/60000));r.history=r.history||[];r.history.push({status:'TESTING DELAY STARTED',at:now,comment:'Testing deadline ඉක්මවා ඇත'});return true}return false}
+function isTestingDelayed(r,now=Date.now()){markTestingDelayIfOverdue(r,now);return !!r.testingDelayAt}
+function countdownMarkup(r){if(!r.testingDeadlineAt)return '<p class="muted text-xs mt-2">⏱ Testing කාලය තවම දාලා නැහැ.</p>';const left=r.testingDeadlineAt-Date.now();if(r.testingDelayAt||(!testingIsComplete(r)&&left<=0)){const delayFrom=r.testingDelayAt||r.testingDeadlineAt;return `<p class="text-sm mt-2 font-bold text-rose-300">⏰ TESTING DELAY • පරක්කු වී: ${formatDuration(Date.now()-delayFrom)}</p>`}if(testingIsComplete(r))return `<p class="text-xs mt-2 text-emerald-300">✓ Testing අවසන් • නියමිත කාලය: පැය ${safe(r.testingHours||'—')}</p>`;return `<p class="text-sm mt-2 font-bold text-cyan-300">⏳ Testing Countdown: ${formatDuration(left)} ඉතිරියි</p>`}
+function formatDuration(ms){let sec=Math.max(0,Math.floor(ms/1000)),d=Math.floor(sec/86400);sec%=86400;let h=Math.floor(sec/3600);sec%=3600;let m=Math.floor(sec/60);let s=sec%60;return (d?d+' දින ':'')+h+' පැය '+m+' විනාඩි '+String(s).padStart(2,'0')+' තත්පර'}
+function card(r){return `<article class="card mb-2"><div class="flex justify-between flex-wrap gap-2"><b>${safe(r.batchNo)}</b><div class="flex gap-2 items-center">${countTag(r.failCount||0)}</div></div><p class="muted mt-2">Colour: ${safe(r.colour||'—')} • Fabric: ${safe(r.fabric||'—')}<br>Style: ${safe(r.style||'—')} • Weight: ${safe(r.weight||'—')}</p><p class="text-sm mt-1">Status: <b>${safe(r.status)}</b></p>${countdownMarkup(r)}<p class="text-sm mt-1 font-bold ${r.shadeStatus==='SHADE PENDING'?'text-amber-300':'text-emerald-300'}">Shade Status: ${safe(liveShadeStatus(r))}</p>${batchProgress(r)}<p class="muted mt-1">අවසන් යාවත්කාලීනය: ${safe(new Date(r.updatedAt||r.createdAt||Date.now()).toLocaleString('en-GB',{timeZone:'Asia/Colombo'}))} • ${safe('TEAM '+(r.lastShiftTeam||selectedShiftTeam()))} • ${safe(r.lastShiftName||shiftForTeam(r.lastShiftTeam||selectedShiftTeam(),new Date(r.updatedAt||Date.now())))}</p>${r.comment?`<p class="muted mt-1">${safe(r.comment)}</p>`:''}<div class="flex flex-wrap gap-2 mt-3"><button class="btn navbtn text-xs" onclick="openBatchHistory('${safe(r.batchNo)}')">📚 සම්පූර්ණ History බලන්න</button>${actions(r)}</div></article>`}
+function list(where){return Object.values(records).filter(where).sort((a,b)=>b.updatedAt-a.updatedAt).map(card).join('')||'<p class="muted">දැනට Batch නැහැ.</p>'}
+let selectedShadeRecheck=null;
+function openShadeRecheck(no){const r=records[no];if(!r)return;selectedShadeRecheck=no;$('shadeRecheckDetails').innerHTML=`<b>Batch: ${safe(r.batchNo)}</b><p class="muted mt-2">Colour: ${safe(r.colour||'—')} • Fabric: ${safe(r.fabric||'—')}<br>Style: ${safe(r.style||'—')} • Weight: ${safe(r.weight||'—')}<br>Testing: ${safe(r.testingStatus||'TESTING OK')}</p>`;$('shadeRecheckDialog').showModal()}
+function closeShadeRecheck(){$('shadeRecheckDialog').close();selectedShadeRecheck=null}
+function saveShadeRecheck(choice){
+ const choiceLabel=choice==='OK'?'SHADE OK':choice==='PENDING'?'SHADE PENDING':'REJECT';if(!confirm('තහවුරු කරන්න: අවසාන Shade තීරණය '+choiceLabel+' ද?'))return;
+ if(!selectedShadeRecheck)return;
+ const r=records[selectedShadeRecheck];
+ if(choice==='OK'){
+  r.status='TESTING OK';
+  r.testingStatus='TESTING OK';
+  r.shadeStatus='SHADE OK';
+  r.shadeFlow='FINAL_SHADE_OK';
+  r.shadeReapprovalPending=false;
+  r.finalShadeApprovedAt=Date.now();
+  r.updatedAt=Date.now();
+  r.history.push({status:'FINAL SHADE APPROVED OK – REMOVED FROM TESTING PENDING AND MOVED TO TESTING OK LIST',at:Date.now(),department:'QUALITY LAB'});
+ }else if(choice==='PENDING'){
+  r.status='SHADE PENDING';r.shadeStatus='SHADE PENDING';r.shadeFlow='RECHECK_PENDING';r.shadeReapprovalPending=false;
+  r.history.push({status:'SHADE APPROVER CONFIRMED PENDING – RETURNED TO SHADE PENDING',at:Date.now(),department:'QUALITY LAB'});
+ }else{
+  r.history.push({status:'SHADE APPROVER REJECTED – REMOVED FROM APP',at:Date.now(),department:'QUALITY LAB'});
+  delete records[selectedShadeRecheck];
+ }
+ if(records[selectedShadeRecheck]){r.updatedAt=Date.now();persist()}
+ closeShadeRecheck();render();
+}
+function resetTestingDeadlineForNewRun(r,now=Date.now(),reason='REPROCESS RETURNED TO TESTING PENDING'){
+ const hours=Number(r.testingHours||0);
+ if(!Number.isFinite(hours)||hours<1)return;
+ r.testingStartAt=now;
+ r.testingDeadlineAt=now+hours*3600000;
+ r.testingDelayAt=null;
+ r.testingDelayMinutes=0;
+ r.testingRunCount=(r.testingRunCount||1)+1;
+ r.history=r.history||[];
+ r.history.push({status:'TESTING TIMER RESET – '+reason,at:now,department:'QUALITY LAB',comment:'නව Testing වාරය සඳහා පැය '+hours+' නැවත ආරම්භ කළා.'});
+}
+function labConfirmShade(no){
+ if(!confirm('තහවුරු කරන්න: මෙම Batch එක Testing Pending වෙත යවන්නද?'))return;const r=records[no];r.status='PENDING';r.testingStatus='PENDING';r.shadeConfirmedAt=Date.now();r.history.push({status:'LAB CONFIRMED SHADE OK → TESTING PENDING',at:Date.now()});persist()}
+function dyeRequestTesting(no){
+ if(!confirm('තහවුරු කරන්න: මෙම Batch එක සඳහා Testing Request එක Quality Lab වෙත යවන්නද?'))return;const r=records[no];r.status='SHADE TEST REQUEST – LAB CONFIRM REQUIRED';r.shadeFlow='TEST_REQUEST_WAIT_LAB';r.shadePendingAction='TESTING REQUESTED';r.history.push({status:'DYE HOUSE TESTING REQUEST SENT – WAITING FOR LAB CONFIRMATION',at:Date.now(),department:'DYE HOUSE'});persist()}
+function confirmShadeTestingRequest(no){
+ if(!confirm('තහවුරු කරන්න: මෙම Batch එක Testing Pending වෙත යවන්නද?'))return;const r=records[no];r.status='PENDING';r.testingStatus='PENDING';r.shadeFlow='TESTING_REQUESTED';r.shadeRequestConfirmedAt=Date.now();r.history.push({status:'LAB CONFIRMED SHADE PENDING TEST REQUEST → TESTING PENDING',at:Date.now()});persist()}
+function adminMoveToStatus(no,selectId){
+ if(loggedInDept!=='admin'){alert('මෙය ADMIN සඳහා පමණයි.');return}
+ const r=records[no];if(!r)return;
+ const target=$(selectId)?.value;if(!target)return;
+ const labels={'SHADE PENDING':'SHADE PENDING','SHADE OK – LAB CONFIRM REQUIRED':'SHADE OK – LAB CONFIRM REQUIRED','PENDING':'TESTING PENDING','TESTING OK':'TESTING OK','FAILED':'TESTING FAILED','ARCHIVED':'INSPECTION IN'};
+ const label=labels[target]||target;
+ if(!confirm(no+' Batch එක Process එක මඟහැර කෙළින්ම '+label+' වෙත මාරු කරන්නද?'))return;
+ const now=Date.now();
+ r.adminDirectMove=true;r.updatedAt=now;
+ if(target==='SHADE PENDING'){r.status='SHADE PENDING';r.shadeStatus='SHADE PENDING';r.shadeFlow='';r.shadeReapprovalPending=false;}
+ else if(target==='SHADE OK – LAB CONFIRM REQUIRED'){r.status=target;r.shadeStatus='SHADE OK';r.shadeFlow='';r.shadeReapprovalPending=false;}
+ else if(target==='PENDING'){r.status='PENDING';r.testingStatus='PENDING';}
+ else if(target==='TESTING OK'){r.status='TESTING OK';r.testingStatus='TESTING OK';r.shadeReapprovalPending=false;}
+ else if(target==='FAILED'){r.status='FAILED';r.testingStatus='FAILED';r.failCount=(r.failCount||0)+1;}
+ else if(target==='ARCHIVED'){r.status='ARCHIVED';r.archiveAt=now;r.adminDirectInspection=true;}
+ r.history=r.history||[];
+ r.history.push({status:'ADMIN DIRECT MOVE → '+label+' (PROCESS BYPASSED)',at:now,department:'ADMIN'});
+ persist();render();alert('Batch එක '+label+' වෙත මාරු කළා.');
+}
+function adminDeleteBatch(no){
+ if(loggedInDept!=='admin'){alert('මෙය ADMIN සඳහා පමණයි.');return}
+ if(!records[no])return;
+ if(!confirm('ADMIN තහවුරු කිරීම: '+no+' Batch එක සහ එහි සියලු History මකා දැමීමද?'))return;
+ delete records[no];persist();render();alert('Batch එක මකා දැමුවා.');
+}
+function deleteShadePending(no){if(!confirm('මෙම Shade Pending Batch එක ලැයිස්තුවෙන් මකා දමන්නද?'))return;delete records[no];persist()}
+function shadeRejectToRps(no){
+ if(!confirm('තහවුරු කරන්න: මෙම Batch එක Shade Pending Reject කර RPS වෙත යවන්නද?'))return;const r=records[no];const now=Date.now();r.status='FAILED';r.testingStatus='FAILED';r.shadeFlow='RPS';r.shadePendingAction='REJECTED TO RPS';r.shadePendingRejected=true;r.shadePendingRejectedAt=now;r.shadePendingRejectedBy='DYE HOUSE';r.failCount=(r.failCount||0)+1;r.history.push({status:'SHADE PENDING REJECTED → RPS',at:now,department:'DYE HOUSE',comment:'Shade Pending Reject වාර්තාවට එකතු කළා.'});r.updatedAt=now;persist();render()}
+function request(no){
+ if(!confirm('තහවුරු කරන්න: මෙම Batch එකට Reprocess Request එකක් යවන්නද?'))return;let note=prompt('Reprocess විස්තරය:')||'';let r=records[no];r.request=note;r.history.push({status:'REPROCESS REQUESTED',at:Date.now(),department:'DYE HOUSE',comment:note});persist()}
+function confirmLab(no){
+ if(!confirm('තහවුරු කරන්න: මෙම Batch එක Testing Pending වෙත යවන්නද?'))return;let r=records[no];const wasFailed=r.status==='FAILED';r.request=null;r.status='PENDING';r.testingStatus='PENDING';const now=Date.now();if(wasFailed){resetTestingDeadlineForNewRun(r,now,'REPROCESS APPROVED');}r.history.push({status:'LAB CONFIRMED → PENDING',at:now,department:'QUALITY LAB'});r.updatedAt=now;persist();render()}
+function changeStatus(no,s){
+ if(!confirm('තහවුරු කරන්න: '+no+' Batch එක '+s+' ලෙස සටහන් කරන්නද?'))return;
+ let r=records[no];if(!r)return;
+ if(s==='FAILED'){
+  r.failCount=(r.failCount||0)+1;r.status='FAILED';r.testingStatus='FAILED';
+  r.history.push({status:'TESTING FAILED',at:Date.now(),department:'QUALITY LAB'});
+ }else if(s==='TESTING OK'&&r.shadeStatus==='SHADE PENDING'){
+  // A Shade-Pending batch must return to the original Shade Approval queue first.
+  r.testingStatus='TESTING OK';r.status='SHADE RECHECK REQUIRED';
+  r.shadeFlow='RECHECK_AFTER_TEST';r.shadeReapprovalPending=true;
+  r.history.push({status:'TESTING OK – RETURNED TO SHADE APPROVAL FOR FINAL CONFIRMATION',at:Date.now(),department:'QUALITY LAB'});
+ }else{
+  r.status=s;r.testingStatus=s;
+  r.history.push({status:s,at:Date.now(),department:'QUALITY LAB'});
+ }
+ r.updatedAt=Date.now();persist();render();
+}
+let selectedLabBatch=null;
+function openLabDecision(no){
+ const r=records[no]; if(!r)return;
+ selectedLabBatch=no;
+ $('labDecisionDetails').innerHTML=`<b>Batch: ${safe(r.batchNo)}</b><p class="muted mt-2">Colour: ${safe(r.colour||'—')} • Fabric: ${safe(r.fabric||'—')}<br>Style: ${safe(r.style||'—')} • Weight: ${safe(r.weight||'—')}<br>Fail Count: ${r.failCount||0}</p>${r.comment?`<p class="mt-2">${safe(r.comment)}</p>`:''}`;
+ const choices=$('labDecisionChoices');
+ if(r.status==='PENDING'){
+  choices.innerHTML=`<button class="btn bg-emerald-700" onclick="saveLabDecision('TESTING OK')">🟢 OK</button><button class="btn bg-rose-700" onclick="saveLabDecision('FAILED')">🔴 FAILED</button>`;
+  $('labDecision').querySelector('p.muted').textContent='Testing Pending Batch එකේ අවසාන ප්‍රතිඵලය තෝරන්න.';
+ }else{
+  choices.innerHTML=`<button class="btn bg-emerald-700" onclick="saveLabDecision('TESTING OK')">🟢 TESTING OK</button><button class="btn bg-amber-600" onclick="saveLabDecision('PENDING')">🟡 PENDING</button>`;
+  $('labDecision').querySelector('p.muted').textContent='මෙම Batch එකේ තත්ත්වය තෝරන්න.';
+ }
+ $('labDecision').showModal();
+}
+function closeLabDecision(){ $('labDecision').close(); selectedLabBatch=null; }
+function saveLabDecision(status){
+ if(!confirm('තහවුරු කරන්න: මෙම Batch එක '+status+' ලෙස සටහන් කරන්නද?'))return;
+ if(!selectedLabBatch)return;
+ const r=records[selectedLabBatch];
+ const previousStatus=r.status;
+ if(status==='FAILED'&&r.status!=='FAILED')r.failCount=(r.failCount||0)+1;
+ const now=Date.now();
+ r.status=status;
+ r.testingStatus=status;
+ if(status==='PENDING'&&previousStatus==='FAILED')resetTestingDeadlineForNewRun(r,now,'FAILED BATCH REPROCESS – NEW TESTING RUN');
+ r.request=null;
+ r.updatedAt=now;
+ r.history.push({status:status,at:now,comment:previousStatus==='FAILED'&&status==='PENDING'?'Reprocess කිරීමෙන් පසු නැවත Testing Pending':'Quality Lab තීරණය'});
+ persist();
+ closeLabDecision();
+}
+function archive(no){
+ if(!confirm('තහවුරු කරන්න: මෙම Batch එක Inspection In ලෙස භාරගන්නවාද?'))return;let r=records[no];if(!r)return;markTestingDelayIfOverdue(r);r.status='ARCHIVED';r.archiveAt=Date.now();r.history.push({status:'INSPECTION ACCEPTED / ARCHIVED',at:Date.now()});persist()}
+let selectedInspectionReturnBatch=null;
+function inspectionReturnBatch(no){
+ if(activeDept!=='inspection'){alert('මෙම ක්‍රියාව Inspection අංශයට පමණයි.');return}
+ const r=records[no];if(!r||r.status!=='ARCHIVED')return;
+ selectedInspectionReturnBatch=no;
+ $('inspectionReturnReason').value='';
+ $('inspectionReturnDepartment').value='DYE HOUSE';
+ $('inspectionReturnDialog').showModal();
+}
+function closeInspectionReturn(){ $('inspectionReturnDialog').close();selectedInspectionReturnBatch=null; }
+function saveInspectionReturn(){
+ if(!confirm('තහවුරු කරන්න: මෙම Batch එක තෝරාගත් Department එකට Inspection Return කරන්නද?'))return;
+ const no=selectedInspectionReturnBatch,r=records[no];if(!r||r.status!=='ARCHIVED')return;
+ const dept=$('inspectionReturnDepartment').value;
+ const reason=$('inspectionReturnReason').value.trim();
+ if(!reason){alert('Defect හේතුව ඇතුළත් කරන්න.');return}
+ const now=Date.now(),eventDate=new Date(now),team=selectedShiftTeam(),shift=shiftForTeam(team,eventDate);
+ const dateTime=eventDate.toLocaleString('en-GB',{timeZone:'Asia/Colombo'});
+ r.status='INSPECTION RETURN';r.inspectionReturnDepartment=dept;r.inspectionReturnReason=reason;r.inspectionReturnAt=now;r.inspectionReturnDateTime=dateTime;r.inspectionReturnTeam=team;r.inspectionReturnShift=shift;r.updatedAt=now;
+ r.history=r.history||[];r.history.push({status:'INSPECTION RETURN → '+dept,at:now,department:'INSPECTION',comment:'Defect / Reason: '+reason,shiftTeam:team,shiftName:shift,localDateTime:dateTime});
+
+ persist();closeInspectionReturn();render();alert('Batch එක '+dept+' වෙත Inspection Return ලෙස සටහන් කළා.');
+}
+function requestInspectionIn(no){
+ if(!confirm('තහවුරු කරන්න: දෝෂය නිවැරදි කළ Batch එක Inspection In සඳහා ඉල්ලීමක් යවන්නද?'))return;
+ const r=records[no];
+ if(!r||r.status!=='INSPECTION RETURN'||r.inspectionReturnDepartment!==DEPT_NAMES[activeDept])return;
+ if(r.inspectionReturnRequestAt)return alert('Request එක දැනටමත් යවා ඇත.');
+ const now=Date.now(),dt=new Date(now),team=selectedShiftTeam(),shift=shiftForTeam(team,dt);
+ const stamp=dt.toLocaleString('en-GB',{timeZone:'Asia/Colombo'});
+ r.inspectionReturnRequestAt=now;r.inspectionReturnRequestDateTime=stamp;
+ r.inspectionReturnRequestTeam=team;r.inspectionReturnRequestShift=shift;r.updatedAt=now;
+ r.history.push({status:'INSPECTION IN REQUEST SENT',at:now,department:DEPT_NAMES[activeDept],
+   comment:'දෝෂය නිවැරදි කර Inspection වෙත නැවත භාරදීමට ඉල්ලීම යැව්වා.',
+   shiftTeam:team,shiftName:shift,localDateTime:stamp});
+ persist();alert('Inspection වෙත Request එක යැව්වා. Accept කරන තුරු Inspection In වෙන්නේ නැහැ.');
+}
+function approveInspectionIn(no){
+ if(!confirm('තහවුරු කරන්න: මෙම Batch එක Inspection In වෙත භාරගන්නවාද?'))return;
+ const r=records[no];
+ if(activeDept!=='inspection'||!r||r.status!=='INSPECTION RETURN'||!r.inspectionReturnRequestAt)return;
+ const now=Date.now();r.status='ARCHIVED';r.archiveAt=now;r.inspectionReturnApprovedAt=now;r.updatedAt=now;
+ r.history.push({status:'INSPECTION IN REQUEST ACCEPTED → INSPECTION IN',at:now,
+   department:'INSPECTION',comment:'Inspection විසින් Department Request එක Accept කළා.'});
+ persist();alert('Request එක Accept කළා. Batch එක Inspection In වෙත මාරු කළා.');
+}
+function rejectInspectionIn(no){
+ if(!confirm('තහවුරු කරන්න: මෙම Inspection In Request එක Reject කරන්නද?'))return;
+ const r=records[no];
+ if(activeDept!=='inspection'||!r||r.status!=='INSPECTION RETURN'||!r.inspectionReturnRequestAt)return;
+ const reason=prompt('Reject කිරීමට හේතුව ඇතුළත් කරන්න:');if(reason===null)return;
+ const now=Date.now();r.inspectionReturnRequestAt=null;r.inspectionReturnRejectedAt=now;
+ r.inspectionReturnRejectReason=reason;r.updatedAt=now;
+ r.history.push({status:'INSPECTION IN REQUEST REJECTED',at:now,department:'INSPECTION',comment:'Reject හේතුව: '+reason});
+ persist();alert('Request එක Reject කළා. Department එකට නැවත Request යැවිය හැක.');
+}
+$('historySearch').oninput=render;
+let previousTab='home';
+function openBatchHistory(no){
+ const r=records[no];if(!r)return;
+ 
+ render();
+ previousTab=document.querySelector('main>section.tab:not(.hidden)')?.id||'none';
+ const events=(r.history||[]).slice().sort((a,b)=>(a.at||0)-(b.at||0));
+ $('batchHistoryDetails').innerHTML=`<article class="card"><h3 class="font-bold text-lg">Batch ${safe(r.batchNo)}</h3><p class="muted mt-1">Colour: ${safe(r.colour||'—')} • Fabric: ${safe(r.fabric||'—')}<br>Style: ${safe(r.style||'—')} • Weight: ${safe(r.weight||'—')}</p><p class="mt-2">දැනට තත්ත්වය: <b>${safe(r.status||'—')}</b></p><p class="mt-1 font-bold ${r.shadeStatus==='SHADE PENDING'?'text-amber-300':'text-emerald-300'}">Shade තත්ත්වය: ${safe(liveShadeStatus(r))}</p></article><h3 class="font-bold mt-4 mb-2">සියලුම ක්‍රියාකාරකම් (${events.length})</h3>${events.length?events.map((h,i)=>{const dt=new Date(h.at||0);return `<article class="card mb-2"><div class="font-bold">${i+1}. ${safe(h.status||'Update')}</div><p class="muted mt-1">දිනය / වේලාව: ${safe(dt.toLocaleString('en-GB',{timeZone:'Asia/Colombo'}))}</p><p class="muted">Department: ${safe(h.department||'—')} • Team: ${safe(h.shiftTeam?'TEAM '+h.shiftTeam:'—')} • Shift: ${safe(h.shiftName||'—')}</p>${h.comment?`<p class="mt-2">${safe(h.comment)}</p>`:''}</article>`}).join(''):'<p class="muted">History සටහන් නැහැ.</p>'}`;
+ openTab('batchHistory');
+}
+function goBackFromBatchHistory(){render();openTab(previousTab==='batchHistory'?'none':previousTab)}
+let reportKey='all';
+function reportRows(){
+ const all=Object.values(records);
+ let rows=all.filter(r=>reportKey==='all'||(reportKey==='requests'?!!r.request:reportKey==='failed'?r.status==='FAILED':reportKey==='pending'?r.status==='PENDING':reportKey==='ok'?r.status==='TESTING OK':reportKey==='archive'?r.status==='ARCHIVED':reportKey==='inspectionReturn'?r.status==='INSPECTION RETURN':reportKey==='shadeOk'?r.shadeStatus==='SHADE OK'&&r.status==='SHADE OK – LAB CONFIRM REQUIRED':reportKey==='shadePending'?r.shadeStatus==='SHADE PENDING'&&r.shadeFlow!=='TESTING REQUESTED'&&r.shadeFlow!=='RPS':reportKey==='shadeRejected'?r.shadePendingRejected===true:true));
+ const q=($('reportSearch').value||'').trim().toLowerCase();
+ return rows.filter(r=>!q||[r.batchNo,r.colour,r.fabric,r.style,r.weight,r.status].some(v=>String(v||'').toLowerCase().includes(q))).sort((a,b)=>b.updatedAt-a.updatedAt);
+}
+function openReport(k){
+ reportKey=k;
+ const names={all:'සියලුම Batch',failed:'FAILED Batch',pending:'PENDING Batch',ok:'TESTING OK Batch',requests:'Reprocess Requests',archive:'Inspection In',inspectionReturn:'Inspection Return',shadeOk:'Shade OK – Lab Confirmation',shadePending:'Shade Pending',shadeRejected:'Shade Pending Rejected'};
+ $('reportTitle').textContent=names[k]||'Batch Report';
+ $('reportSearch').value='';
+ openTab('report');renderReport();
+}
+function renderReport(){
+ const rows=reportRows();
+ $('reportList').innerHTML=rows.length?rows.map(r=>`<article class="card mb-2"><div class="flex justify-between gap-2"><b>${safe(r.batchNo)}</b><div class="flex gap-2 items-center">${countTag(r.failCount||0)}</div></div><p class="muted mt-2">Colour: ${safe(r.colour||'—')} • Fabric: ${safe(r.fabric||'—')}<br>Style: ${safe(r.style||'—')} • Weight: ${safe(r.weight||'—')}</p><b>${safe(r.status)}</b>${r.status==='INSPECTION RETURN'?`<p class="mt-2 text-sm font-bold text-amber-300">භාරදුන් අංශය: ${safe(r.inspectionReturnDepartment||'—')}</p><p class="text-sm">Defect / හේතුව: ${safe(r.inspectionReturnReason||'—')}</p><p class="muted text-sm">දිනය / වේලාව: ${safe(r.inspectionReturnDateTime||'—')} • TEAM ${safe(r.inspectionReturnTeam||'—')} • SHIFT ${safe(r.inspectionReturnShift||'—')}</p>`:''}${reportKey==='shadeOk'&&activeDept==='lab'?`<div class="mt-3"><button class="btn bg-emerald-700" onclick="labConfirmShade('${safe(r.batchNo)}')">✓ Lab Confirm → Testing Pending</button></div>`:''}<div class="mt-3"><button class="btn navbtn text-xs" onclick="openBatchHistory('${safe(r.batchNo)}')">📚 සම්පූර්ණ History බලන්න</button></div></article>`).join(''):'<p class="muted">මෙම තත්ත්වයට Batch නැහැ.</p>';
+}
+$('reportSearch').oninput=renderReport;
+function csvCell(v){return '"'+String(v??'').replace(/"/g,'""')+'"'}
+function exportReport(){
+ const rows=reportRows(),head=['Batch Number','Colour','Fabric Code','Style','Weight','Status','Fail Count','Testing Hours','Testing Deadline','Comment'];
+ const csv=[head,...rows.map(r=>[r.batchNo,r.colour,r.fabric,r.style,r.weight,r.status,r.failCount,r.testingHours||'',r.testingDeadlineAt?new Date(r.testingDeadlineAt).toLocaleString('en-GB',{timeZone:'Asia/Colombo'}):'',r.comment])].map(row=>row.map(csvCell).join(',')).join('\r\n');
+ const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+ a.href=url;a.download='Testing-Batch-Report.csv';a.click();URL.revokeObjectURL(url);
+}
+function printReport(){
+ const rows=reportRows(),w=window.open('','_blank');if(!w){alert('Print සඳහා browser pop-up අවසර දෙන්න.');return}
+ w.document.write('<html><head><title>Testing Batch Report</title><style>body{font-family:Arial;padding:20px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #999;padding:7px;text-align:left}</style></head><body><h2>'+safe($('reportTitle').textContent)+'</h2><table><tr><th>Batch No</th><th>Colour</th><th>Fabric</th><th>Style</th><th>Weight</th><th>Status</th><th>Fail Count</th></tr>'+rows.map(r=>'<tr>'+[r.batchNo,r.colour,r.fabric,r.style,r.weight,r.status,r.failCount].map(v=>'<td>'+safe(v||'')+'</td>').join('')+'</tr>').join('')+'</table></body></html>');
+ w.document.close();w.focus();w.print();
+}
+function render(){
+let all=Object.values(records);let delayChanged=false;all.forEach(r=>{if(markTestingDelayIfOverdue(r))delayChanged=true});if(delayChanged)localStorage.setItem(KEY,JSON.stringify(records));const statusTiles=[['TESTING FAILED',all.filter(r=>r.status==='FAILED').length,'failed'],['TESTING PENDING',all.filter(r=>r.status==='PENDING').length,'pending'],['TESTING OK',all.filter(r=>r.status==='TESTING OK').length,'ok'],['REPROCESS',all.filter(r=>r.request).length,'requests'],['INSPECTION IN',all.filter(r=>r.status==='ARCHIVED').length,'archive'],['TESTING DELAY',all.filter(r=>isTestingDelayed(r)).length,'testingDelay'],['INSPECTION RETURN',all.filter(r=>r.status==='INSPECTION RETURN').length,'inspectionReturn'],['SHADE OK / RECHECK',all.filter(r=>(r.shadeStatus==='SHADE OK'&&r.status==='SHADE OK – LAB CONFIRM REQUIRED')||r.status==='SHADE RECHECK REQUIRED').length,'shadeOk'],['SHADE PENDING',all.filter(r=>r.shadeStatus==='SHADE PENDING'&&r.shadeFlow!=='TESTING REQUESTED'&&r.shadeFlow!=='RPS').length,'shadePending'],['SHADE PENDING REJECTED',all.filter(r=>r.shadePendingRejected===true).length,'shadeRejected']];
+const deptStats={lab:['failed','pending','ok','shadeOk','shadePending'],dye:['failed','pending','ok','requests','archive','testingDelay','shadePending','shadeRejected','inspectionReturn'],inspection:['ok','archive','inspectionReturn']};const visibleStats=loggedInDept==='admin'?statusTiles:statusTiles.filter(([a,b,k])=>(deptStats[loggedInDept]||[]).includes(k));$('stats').innerHTML=visibleStats.map(([a,b,k])=>`<button type="button" onclick="openReport('${k}')" class="bg-slate-900 rounded-xl p-3 text-left border border-slate-700"><div class="muted">${a} • විස්තර බලන්න</div><div class="text-2xl font-black">${b}</div></button>`).join('');
+$('shadeOkList').innerHTML=list(r=>(r.shadeStatus==='SHADE OK'&&r.status==='SHADE OK – LAB CONFIRM REQUIRED')||(r.status==='SHADE RECHECK REQUIRED'||r.shadeReapprovalPending));$('shadeReapprovalQueue').innerHTML=list(r=>r.shadeReapprovalPending===true||r.status==='SHADE RECHECK REQUIRED');$('shadePendingList').innerHTML=list(r=>r.shadeStatus==='SHADE PENDING'&&r.shadeFlow!=='TESTING_REQUESTED'&&r.shadeFlow!=='TEST_REQUEST_WAIT_LAB'&&r.shadeFlow!=='RPS');$('rpsList').innerHTML=list(r=>r.shadeFlow==='RPS');$('shadeRejectedList').innerHTML=all.filter(r=>r.shadePendingRejected===true).sort((a,b)=>(b.shadePendingRejectedAt||0)-(a.shadePendingRejectedAt||0)).map(r=>`<article class="card mb-2"><div class="flex justify-between gap-2 flex-wrap"><b>${safe(r.batchNo)}</b><span class="badge bg-rose-800 text-white">SHADE PENDING REJECTED</span></div><p class="muted mt-2">Colour: ${safe(r.colour||'—')} • Fabric: ${safe(r.fabric||'—')}<br>Style: ${safe(r.style||'—')} • Weight: ${safe(r.weight||'—')}</p><p class="text-sm">දැනට තිබෙන Status: <b>${safe(r.status||'—')}</b></p><p class="muted text-sm">Reject කළ වේලාව: ${safe(new Date(r.shadePendingRejectedAt).toLocaleString('en-GB',{timeZone:'Asia/Colombo'}))} • ${safe(r.shadePendingRejectedBy||'DYE HOUSE')}</p><button class="btn navbtn text-xs mt-2" onclick="openBatchHistory('${safe(r.batchNo)}')">📚 සම්පූර්ණ History</button>${loggedInDept==='admin'?`<button class="btn bg-rose-800 text-xs mt-2 ml-2" onclick="adminDeleteBatch('${safe(r.batchNo)}')">🗑 ADMIN – Delete Batch</button>`:''}</article>`).join('')||'<p class="muted">Shade Pending Reject කළ Batch නැහැ.</p>';$('failedList').innerHTML=list(r=>r.status==='FAILED');$('pendingList').innerHTML=Object.values(records).filter(r=>r.status==='PENDING').sort((a,b)=>b.updatedAt-a.updatedAt).map(r=>`<article class="card mb-2"><div class="flex justify-between flex-wrap gap-2"><b>${safe(r.batchNo)}</b><div class="flex gap-2 items-center">${countTag(r.failCount||0)}</div></div><p class="muted mt-2">Colour: ${safe(r.colour||'—')} • Fabric: ${safe(r.fabric||'—')}<br>Style: ${safe(r.style||'—')} • Weight: ${safe(r.weight||'—')}</p><p class="text-sm mt-1">Status: <b>PENDING</b></p>${countdownMarkup(r)}<p class="text-sm mt-1 font-bold ${r.shadeStatus==='SHADE PENDING'?'text-amber-300':'text-emerald-300'}">Shade Status: ${safe(liveShadeStatus(r))}</p>${batchProgress(r)}<div class="flex flex-wrap gap-2 mt-3"><button class="btn bg-emerald-700" onclick="changeStatus('${safe(r.batchNo)}','TESTING OK')">🟢 TESTING OK</button><button class="btn bg-rose-700" onclick="changeStatus('${safe(r.batchNo)}','FAILED')">🔴 FAILED</button>${loggedInDept==='admin'?`<button class="btn bg-rose-900" onclick="adminDeleteBatch('${safe(r.batchNo)}')">🗑 ADMIN – Delete</button>`:''}</div></article>`).join('')||'<p class="muted">දැනට Pending Batch නැහැ.</p>';$('testingDelayList').innerHTML=all.filter(r=>isTestingDelayed(r)).sort((a,b)=>a.testingDeadlineAt-b.testingDeadlineAt).map(r=>`<article class="card mb-2"><div class="flex justify-between flex-wrap gap-2"><b>${safe(r.batchNo)}</b><span class="badge bg-rose-800 text-white">⏰ TESTING DELAY</span></div><p class="text-sm mt-2">දැනට තිබෙන ස්ථානය: <b>${safe(r.status==='ARCHIVED'?'INSPECTION IN':r.status)}</b></p><p class="text-sm">නියමිත කාලය: ${safe(r.testingHours||'—')} පැය</p><p class="muted text-sm">අවසන් විය යුතු වේලාව: ${safe(new Date(r.testingDeadlineAt).toLocaleString('en-GB',{timeZone:'Asia/Colombo'}))}</p><p class="muted text-sm">Delay ආරම්භ වූ වේලාව: ${safe(new Date(r.testingDelayAt).toLocaleString('en-GB',{timeZone:'Asia/Colombo'}))}</p>${countdownMarkup(r)}<button class="btn navbtn text-xs mt-2" onclick="openBatchHistory('${safe(r.batchNo)}')">📚 සම්පූර්ණ History</button>${loggedInDept==='admin'?`<button class="btn bg-rose-800 text-xs mt-2 ml-2" onclick="adminDeleteBatch('${safe(r.batchNo)}')">🗑 ADMIN – Delete Batch</button>`:''}</article>`).join('')||'<p class="muted">දැනට Testing Delay Batch නැහැ.</p>';$('okList').innerHTML=list(r=>r.status==='TESTING OK');$('requestList').innerHTML=list(r=>!!r.request||r.shadeFlow==='TEST_REQUEST_WAIT_LAB'||r.shadeFlow==='TESTING_REQUESTED');$('archiveList').innerHTML=list(r=>r.status==='ARCHIVED');
+$('returnRequestsList').innerHTML=Object.values(records).filter(r=>r.status==='INSPECTION RETURN'&&r.inspectionReturnRequestAt).map(r=>`<article class="card mb-2"><b>${safe(r.batchNo)}</b><p class="mt-2">Department: ${safe(r.inspectionReturnDepartment||'—')} • Request: ${safe(r.inspectionReturnRequestDateTime||'—')}</p><p class="text-sm">Defect: ${safe(r.inspectionReturnReason||'—')}</p><div class="mt-2">${actions(r)}</div></article>`).join('')||'<p class="muted">Approval සඳහා Request නැහැ.</p>';
+$('myReturnsList').innerHTML=Object.values(records).filter(r=>r.status==='INSPECTION RETURN'&&r.inspectionReturnDepartment===DEPT_NAMES[activeDept]).map(r=>`<article class="card mb-2"><b>${safe(r.batchNo)}</b><p class="mt-2">දෝෂය: ${safe(r.inspectionReturnReason||'—')}</p><p class="muted">Return: ${safe(r.inspectionReturnDateTime||'—')} • TEAM ${safe(r.inspectionReturnTeam||'—')} • ${safe(r.inspectionReturnShift||'—')}</p><p class="text-sm mt-1">${r.inspectionReturnRequestAt?'Request යවා ඇත – Inspection Approval බලාපොරොත්තුවෙන්':'වැඩ අවසන් වූ පසු Inspection In Request යවන්න.'}</p><div class="mt-2">${actions(r)}</div></article>`).join('')||'<p class="muted">ඔබගේ අංශයට Return කළ Batch නැහැ.</p>';
+$('inspectionReturnList').innerHTML=Object.values(records).filter(r=>r.status==='INSPECTION RETURN').sort((a,b)=>(b.inspectionReturnAt||0)-(a.inspectionReturnAt||0)).map(r=>`<article class="card mb-2"><div class="flex justify-between flex-wrap gap-2"><b>${safe(r.batchNo)}</b><div class="flex gap-2 items-center">${countTag(r.failCount||0)}</div></div><p class="muted mt-2">Colour: ${safe(r.colour||'—')} • Fabric: ${safe(r.fabric||'—')}<br>Style: ${safe(r.style||'—')} • Weight: ${safe(r.weight||'—')}</p><p class="font-bold text-amber-300 mt-2">↩️ INSPECTION RETURN → ${safe(r.inspectionReturnDepartment||'—')}</p><p class="text-sm mt-1">Defect / හේතුව: ${safe(r.inspectionReturnReason||'—')}</p><p class="muted mt-2">දිනය / වේලාව: ${safe(r.inspectionReturnDateTime||new Date(r.inspectionReturnAt||r.updatedAt||Date.now()).toLocaleString('en-GB',{timeZone:'Asia/Colombo'}))}<br>Team: ${safe(r.inspectionReturnTeam?'TEAM '+r.inspectionReturnTeam:'—')} • Shift: ${safe(r.inspectionReturnShift||'—')}</p><div class="mt-2"><button class="btn navbtn text-xs" onclick="openBatchHistory('${safe(r.batchNo)}')">📚 සම්පූර්ණ History</button>${loggedInDept==='admin'?`<button class="btn bg-rose-800 text-xs ml-2" onclick="adminDeleteBatch('${safe(r.batchNo)}')">🗑 ADMIN – Delete Batch</button>`:''}</div></article>`).join('')||'<p class="muted">Inspection Return Batch නැහැ.</p>';
+let q=$('historySearch').value.trim().toUpperCase();$('historyList').innerHTML=all.filter(r=>!q||r.batchNo.includes(q)).map(r=>`<div class="border-b border-slate-700 py-2"><b>${safe(r.batchNo)}</b> — ${safe(r.status)}<p class="muted">${(r.history||[]).map(h=>new Date(h.at).toLocaleString('en-GB',{timeZone:'Asia/Colombo'})+' • '+safe(h.shiftTeam||'Team ?')+' / '+safe(h.shiftName||'Shift ?')+' • '+safe(h.status)+' '+safe(h.comment||'')).join('<br>')}</p>${loggedInDept==='admin'?`<button class="btn bg-rose-800 text-xs mt-2" onclick="adminDeleteBatch('${safe(r.batchNo)}')">🗑 ADMIN – Delete Batch</button>`:''}</div>`).join('')||'<p class="muted">History නැහැ.</p>';
+ if(!$('report').classList.contains('hidden'))renderReport();
+}
+updateCurrentShift();
+render();setInterval(()=>{render();updateCurrentShift();},1000);showDepartment('home');
+</script>
+<footer class="text-center text-[10px] text-slate-500 py-3 opacity-80">Created by Mohan Sanjeewa</footer>
+</body></html>
