@@ -58,21 +58,12 @@
 <button class="btn navbtn" data-tab="returnRequests">📨 Return Requests</button>
 <button class="btn navbtn" data-tab="myReturns">🛠️ My Return Batches</button>
   <button class="btn navbtn" data-tab="history">📋 Batch History</button>
+  <button class="btn navbtn" data-tab="batchExcel">📊 DYE PLAN Excel Upload</button>
  </nav>
  <section id="entry" class="panel p-4 space-y-3"><div class="badge bg-amber-500/20 text-amber-300">QUALITY LAB ONLY</div>
   <div><h2 class="font-bold text-lg">QUALITY LAB – SHADE APPROVAL</h2><p class="muted">මුලින් Batch Number එක ඇතුළත් කර Batch විස්තර ලබාගෙන Shade පරීක්ෂා කර SHADE OK හෝ SHADE PENDING තෝරන්න.</p></div>
   <div class="grid sm:grid-cols-2 gap-2"><input id="batchNo" class="field" placeholder="Batch Number"><button id="lookup" class="btn bg-blue-600">DYEING PRO Batch Lookup</button></div>
   <p id="lookupMsg" class="muted">Excel Master එක Upload කළ පසු Batch Number එකෙන් Colour, Fabric Code, Style සහ Weight ස්වයංක්‍රීයව පිරේ.</p>
-  <div class="card space-y-2">
-   <div class="flex flex-wrap items-center justify-between gap-2">
-    <b class="text-sm text-cyan-300">📊 DYE PLAN Excel Upload</b>
-    <span id="excelMasterCount" class="badge bg-slate-700 text-slate-200">Excel දත්ත තවම Upload කර නැහැ</span>
-   </div>
-   <p class="muted">DYE PLAN Excel ගොනුව තෝරන්න. Excel හි Batch #, Colour, Fabric Code, Style සහ Wgt අනුව Lookup සිදු වේ. නැවත Upload කළ විට Excel Master දත්ත පමණක් යාවත්කාලීන වේ; Testing Records මකා නොදමයි.</p>
-   <input id="excelFile" type="file" accept=".xlsx,.xls" class="field">
-   <button id="uploadExcel" type="button" class="btn bg-cyan-700 w-full">⬆️ Excel Upload කරන්න</button>
-   <p id="excelUploadMsg" class="muted">දත්ත මේ Phone / Browser එකේ IndexedDB තුළ තබාගනී. වෙනත් Phone එකකට ස්වයංක්‍රීයව Sync නොවේ.</p>
-  </div>
   <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
    <label class="muted">COLOUR<input id="colour" class="field mt-1" placeholder="Colour"></label>
    <label class="muted">FABRIC CODE<input id="fabric" class="field mt-1" placeholder="Fabric Code"></label>
@@ -99,6 +90,19 @@
 </select>
 <textarea id="bulk" class="field" rows="4" placeholder="Batch Number 1&#10;Batch Number 2&#10;Batch Number 3"></textarea>
 <button id="bulkSave" class="btn bg-amber-600 w-full">තෝරාගත් ලැයිස්තුවට Batch එකතු කරන්න</button></div>
+ </section>
+ <section id="batchExcel" class="tab panel p-4 hidden">
+  <h2 class="font-bold text-lg mb-2">📊 DYE HOUSE – DYE PLAN Excel Upload</h2>
+  <p class="muted mb-3">මෙම Excel Upload පහසුකම DYE HOUSE අංශයට පමණක් පෙන්වයි. Excel හි Batch #, Colour, Fabric Code, Style සහ Wgt අනුව Batch Lookup සඳහා දත්ත සකස් වේ. නැවත Upload කළ විට Excel Master දත්ත පමණක් යාවත්කාලීන වේ; Testing Records මකා නොදමයි.</p>
+  <div class="card space-y-2">
+   <div class="flex flex-wrap items-center justify-between gap-2">
+    <b class="text-sm text-cyan-300">📊 DYE PLAN Excel Upload</b>
+    <span id="excelMasterCount" class="badge bg-slate-700 text-slate-200">Excel දත්ත තවම Upload කර නැහැ</span>
+   </div>
+   <input id="excelFile" type="file" accept=".xlsx,.xls" class="field">
+   <button id="uploadExcel" type="button" class="btn bg-cyan-700 w-full">⬆️ Excel Upload කරන්න</button>
+   <p id="excelUploadMsg" class="muted">දත්ත මේ Phone / Browser එකේ IndexedDB තුළ තබාගනී. වෙනත් Phone එකකට ස්වයංක්‍රීයව Sync නොවේ.</p>
+  </div>
  </section>
  <section id="shadeOk" class="tab panel p-4 hidden"><h2 class="font-bold text-lg mb-2">🟢 Shade OK – Lab Confirmation</h2><p class="muted mb-3">Shade OK වූ Batch විස්තර බලලා Lab Confirmation කරන්න. Confirm කළ පසු Testing Pending වෙත යයි.</p><p class="muted mb-3">Testing OK වූ Shade Pending Batch මෙහි පැමිණේ. Shade Approver විසින් SHADE OK තහවුරු කළ පසු පමණක් Testing OK ලැයිස්තුවට යයි.</p><div id="shadeOkList"></div></section>
  <section id="shadePending" class="tab panel p-4 hidden"><h2 class="font-bold text-lg mb-2">🟠 Shade Pending List</h2><p class="muted mb-3">Dye House එකෙන් Shade Pending Batch පරීක්ෂා කර Testing Request හෝ RPS Reject කරන්න.</p><div id="shadePendingList"></div></section>
@@ -264,9 +268,9 @@ function showDepartment(d){
  const info={dye:['🏭 DYE HOUSE','Failed Batch පරීක්ෂා කර Reprocess Request යැවීම'],lab:['🧪 QUALITY LAB','මුලින් Shade Approval; පසුව Lab Confirmation සහ Testing'],inspection:['🔍 INSPECTION','Testing OK Batch භාරගෙන Archive කිරීම']};
  $('deptTitle').textContent=info[d][0]; $('deptDesc').textContent=info[d][1];
  $('adminBulkPanel').classList.toggle('hidden',loggedInDept!=='admin');
- const allowed={dye:['shadePending','rps','shadeRejected','failed','requests','testingDelay','ok','archive','myReturns','history'],lab:['entry','shadeOk','shadePending','pending','failed','requests','myReturns','history'],inspection:['ok','archive','inspectionReturn','returnRequests','history']};
+ const allowed={dye:['batchExcel','shadePending','rps','shadeRejected','failed','requests','testingDelay','ok','archive','myReturns','history'],lab:['entry','shadeOk','shadePending','pending','failed','requests','myReturns','history'],inspection:['ok','archive','inspectionReturn','returnRequests','history']};
  const labels={
-  dye:{shadePending:'🟠 Shade Pending List',rps:'🔴 Shade Reject / RPS',shadeRejected:'🚫 Shade Pending Rejected',failed:'🔴 Testing Failed',requests:'🔁 Reprocess Requests',testingDelay:'⏰ Testing Delay',ok:'🟢 Testing OK',archive:'📥 QA IN',myReturns:'🛠️ My Return Batches',history:'📋 Batch History'},
+  dye:{batchExcel:'📊 DYE PLAN Excel Upload',shadePending:'🟠 Shade Pending List',rps:'🔴 Shade Reject / RPS',shadeRejected:'🚫 Shade Pending Rejected',failed:'🔴 Testing Failed',requests:'🔁 Reprocess Requests',testingDelay:'⏰ Testing Delay',ok:'🟢 Testing OK',archive:'📥 QA IN',myReturns:'🛠️ My Return Batches',history:'📋 Batch History'},
   lab:{entry:'🎨 Shade Approval',shadeOk:'🟢 Shade OK – Confirm',shadePending:'🟠 Shade Pending',pending:'🟡 Testing Pending',failed:'🔴 Testing Failed',requests:'📨 Dye House Requests',history:'📋 Lab History'},
   inspection:{ok:'🟢 Testing OK',archive:'🗄 Inspection In',inspectionReturn:'↩️ Inspection Return',returnRequests:'📨 Return Requests – Approval'}
  };
