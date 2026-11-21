@@ -5,6 +5,7 @@
 <title>Testing Batch Manager – Department Login Preview</title>
 <meta name="theme-color" content="#0b1220">
 <script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 *{box-sizing:border-box}body{margin:0;background:#0b1220;color:#eef2ff;font-family:system-ui,"Noto Sans Sinhala",sans-serif}
 .panel{background:#121e31;border:1px solid #293a53;border-radius:16px}.field{width:100%;background:#091426;border:1px solid #34445d;border-radius:11px;padding:12px;color:white;min-height:46px;font-size:15px}
@@ -61,12 +62,23 @@
  <section id="entry" class="panel p-4 space-y-3"><div class="badge bg-amber-500/20 text-amber-300">QUALITY LAB ONLY</div>
   <div><h2 class="font-bold text-lg">QUALITY LAB – SHADE APPROVAL</h2><p class="muted">මුලින් Batch Number එක ඇතුළත් කර Batch විස්තර ලබාගෙන Shade පරීක්ෂා කර SHADE OK හෝ SHADE PENDING තෝරන්න.</p></div>
   <div class="grid sm:grid-cols-2 gap-2"><input id="batchNo" class="field" placeholder="Batch Number"><button id="lookup" class="btn bg-blue-600">DYEING PRO Batch Lookup</button></div>
-  <p id="lookupMsg" class="muted">Preview Mode: Firebase සම්බන්ධ කළ පසු Batch Number එකෙන් Colour, Fabric Code, Style සහ Weight ස්වයංක්‍රීයව පිරේ.</p>
+  <p id="lookupMsg" class="muted">Excel Master එක Upload කළ පසු Batch Number එකෙන් Colour, Fabric Code, Style සහ Weight ස්වයංක්‍රීයව පිරේ.</p>
+  <div class="card space-y-2">
+   <div class="flex flex-wrap items-center justify-between gap-2">
+    <b class="text-sm text-cyan-300">📊 DYE PLAN Excel Upload</b>
+    <span id="excelMasterCount" class="badge bg-slate-700 text-slate-200">Excel දත්ත තවම Upload කර නැහැ</span>
+   </div>
+   <p class="muted">DYE PLAN Excel ගොනුව තෝරන්න. Excel හි Batch #, Colour, Fabric Code, Style සහ Wgt අනුව Lookup සිදු වේ. නැවත Upload කළ විට Excel Master දත්ත පමණක් යාවත්කාලීන වේ; Testing Records මකා නොදමයි.</p>
+   <input id="excelFile" type="file" accept=".xlsx,.xls" class="field">
+   <button id="uploadExcel" type="button" class="btn bg-cyan-700 w-full">⬆️ Excel Upload කරන්න</button>
+   <p id="excelUploadMsg" class="muted">දත්ත මේ Phone / Browser එකේ IndexedDB තුළ තබාගනී. වෙනත් Phone එකකට ස්වයංක්‍රීයව Sync නොවේ.</p>
+  </div>
   <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
    <label class="muted">COLOUR<input id="colour" class="field mt-1" placeholder="Colour"></label>
    <label class="muted">FABRIC CODE<input id="fabric" class="field mt-1" placeholder="Fabric Code"></label>
    <label class="muted">STYLE<input id="style" class="field mt-1" placeholder="Style"></label>
    <label class="muted">WGT (WEIGHT)<input id="weight" class="field mt-1" placeholder="Weight"></label>
+   <label class="muted">CUSTOMER<input id="customer" class="field mt-1" placeholder="Customer" readonly></label>
   </div>
   <div class="grid sm:grid-cols-2 gap-2">
    <label class="muted">Shade Status<select id="status" class="field mt-1"><option value="SHADE OK">SHADE OK</option><option value="SHADE PENDING">SHADE PENDING</option></select></label>
@@ -295,9 +307,152 @@ function persist(){
 }
 function openTab(id){document.querySelectorAll('main>section.tab, main>#entry').forEach(x=>x.classList.toggle('hidden',x.id!==id));document.querySelectorAll('.navbtn').forEach(b=>b.classList.toggle('active',b.dataset.tab===id))}
 document.querySelectorAll('.navbtn[data-tab]').forEach(b=>b.onclick=()=>openTab(b.dataset.tab));
-$('lookup').onclick=()=>{$('lookupMsg').textContent='Preview Mode: Firebase Lookup තවම සම්බන්ධ කර නැහැ. Colour, Fabric Code, Style සහ Weight අතින් ඇතුළත් කරන්න.'};
+// Excel Master: isolated IndexedDB store; never touches the existing Testing Records localStorage key.
+const BATCH_MASTER_DB='tbm_batch_master_db_v1';
+const BATCH_MASTER_STORE='batchMaster';
+let batchMasterDbPromise=null;
+
+function openBatchMasterDB(){
+ if(!('indexedDB' in window))return Promise.reject(new Error('මෙම Browser එක IndexedDB සහාය නොදක්වයි.'));
+ if(batchMasterDbPromise)return batchMasterDbPromise;
+ batchMasterDbPromise=new Promise((resolve,reject)=>{
+  const req=indexedDB.open(BATCH_MASTER_DB,1);
+  req.onupgradeneeded=()=>{
+   const db=req.result;
+   if(!db.objectStoreNames.contains(BATCH_MASTER_STORE))db.createObjectStore(BATCH_MASTER_STORE,{keyPath:'batchNo'});
+  };
+  req.onsuccess=()=>resolve(req.result);
+  req.onerror=()=>reject(req.error||new Error('IndexedDB විවෘත කළ නොහැක.'));
+ });
+ return batchMasterDbPromise;
+}
+function excelText(v){
+ if(v===null||v===undefined)return '';
+ return String(v).trim();
+}
+function normalizeHeader(v){
+ return String(v??'').trim().toLowerCase().replace(/[\s_\-#./]+/g,'').replace(/[^a-z0-9]/g,'');
+}
+function findExcelColumn(headers,candidates){
+ const wanted=candidates.map(normalizeHeader);
+ return headers.findIndex(h=>wanted.includes(normalizeHeader(h)));
+}
+function excelDateText(v){
+ if(v instanceof Date)return v.toLocaleDateString('en-CA');
+ return excelText(v);
+}
+async function saveBatchMasterRows(rows){
+ const db=await openBatchMasterDB();
+ return new Promise((resolve,reject)=>{
+  const tx=db.transaction(BATCH_MASTER_STORE,'readwrite');
+  const store=tx.objectStore(BATCH_MASTER_STORE);
+  // Replace only the imported master dataset, not Testing Records.
+  store.clear();
+  rows.forEach(row=>store.put(row));
+  tx.oncomplete=()=>resolve(rows.length);
+  tx.onerror=()=>reject(tx.error||new Error('Excel දත්ත Save කිරීම අසාර්ථකයි.'));
+  tx.onabort=()=>reject(tx.error||new Error('Excel Upload අවලංගු වුණා.'));
+ });
+}
+async function getBatchMasterRow(batchNo){
+ const db=await openBatchMasterDB();
+ return new Promise((resolve,reject)=>{
+  const tx=db.transaction(BATCH_MASTER_STORE,'readonly');
+  const req=tx.objectStore(BATCH_MASTER_STORE).get(String(batchNo).trim().toUpperCase());
+  req.onsuccess=()=>resolve(req.result||null);
+  req.onerror=()=>reject(req.error||new Error('Batch Lookup අසාර්ථකයි.'));
+ });
+}
+async function updateBatchMasterCount(){
+ try{
+  const db=await openBatchMasterDB();
+  const count=await new Promise((resolve,reject)=>{
+   const tx=db.transaction(BATCH_MASTER_STORE,'readonly');
+   const req=tx.objectStore(BATCH_MASTER_STORE).count();
+   req.onsuccess=()=>resolve(req.result);
+   req.onerror=()=>reject(req.error);
+  });
+  $('excelMasterCount').textContent=count.toLocaleString()+' Batch දත්ත';
+ }catch(e){
+  $('excelMasterCount').textContent='Excel දත්ත තවම Upload කර නැහැ';
+ }
+}
+async function importBatchExcel(){
+ const file=$('excelFile').files?.[0];
+ if(!file){alert('පළමුව DYE PLAN Excel ගොනුව තෝරන්න.');return}
+ if(!window.XLSX){alert('Excel කියවීමේ Library එක Load වී නැහැ. Internet සම්බන්ධතාවය පරීක්ෂා කරන්න.');return}
+ $('uploadExcel').disabled=true;
+ $('excelUploadMsg').textContent='Excel ගොනුව කියවමින් පවතී...';
+ try{
+  const buffer=await file.arrayBuffer();
+  const workbook=XLSX.read(buffer,{type:'array',cellDates:true});
+  const sheetName=workbook.SheetNames[0];
+  if(!sheetName)throw new Error('Excel Sheet එකක් හමු වුණේ නැහැ.');
+  const sheet=workbook.Sheets[sheetName];
+  const matrix=XLSX.utils.sheet_to_json(sheet,{header:1,defval:'',raw:false});
+  if(matrix.length<2)throw new Error('Excel හි දත්ත පේළි හමු වුණේ නැහැ.');
+  const headers=matrix[0].map(excelText);
+  const col={
+   batch:findExcelColumn(headers,['Batch #','Batch No','Batch Number','Batch']),
+   customer:findExcelColumn(headers,['Customer']),
+   colour:findExcelColumn(headers,['Colour','Color']),
+   style:findExcelColumn(headers,['Style']),
+   fabric:findExcelColumn(headers,['Fabric Code','Fabric']),
+   weight:findExcelColumn(headers,['Wgt','Weight'])
+  };
+  if(col.batch<0)throw new Error('Batch # Column එක Excel හි හමු වුණේ නැහැ.');
+  const map=new Map();
+  for(let i=1;i<matrix.length;i++){
+   const row=matrix[i];
+   const no=excelText(row[col.batch]).toUpperCase();
+   if(!no)continue;
+   map.set(no,{
+    batchNo:no,
+    customer:col.customer>=0?excelText(row[col.customer]):'',
+    colour:col.colour>=0?excelText(row[col.colour]):'',
+    style:col.style>=0?excelText(row[col.style]):'',
+    fabric:col.fabric>=0?excelText(row[col.fabric]):'',
+    weight:col.weight>=0?excelText(row[col.weight]):''
+   });
+  }
+  const rows=[...map.values()];
+  if(!rows.length)throw new Error('වලංගු Batch Number එකක් හමු වුණේ නැහැ.');
+  await saveBatchMasterRows(rows);
+  $('excelUploadMsg').textContent='සාර්ථකයි! '+rows.length.toLocaleString()+' Batch දත්ත Upload කළා. නැවත Upload කළේ නම් පැරණි Excel Master දත්ත වෙනුවට අලුත් දත්ත යෙදුවා.';
+  $('lookupMsg').textContent='Excel Master සූදානම්. Batch Number එක ඇතුළත් කර Lookup ඔබන්න.';
+  await updateBatchMasterCount();
+ }catch(err){
+  $('excelUploadMsg').textContent='Upload අසාර්ථකයි: '+(err?.message||String(err));
+ }finally{
+  $('uploadExcel').disabled=false;
+ }
+}
+async function lookupExcelBatch(){
+ const no=$('batchNo').value.trim().toUpperCase();
+ if(!no){$('lookupMsg').textContent='Batch Number එක ඇතුළත් කරන්න.';return}
+ try{
+  const row=await getBatchMasterRow(no);
+  if(!row){
+   $('lookupMsg').textContent='මෙම Batch Number එක Excel Master එකේ හමු වුණේ නැහැ. Batch Number එක පරීක්ෂා කරන්න.';
+   return;
+  }
+  $('colour').value=row.colour||'';
+  $('fabric').value=row.fabric||'';
+  $('style').value=row.style||'';
+  $('weight').value=row.weight||'';
+  $('customer').value=row.customer||'';
+  $('lookupMsg').textContent='✓ Excel Master වෙතින් Batch විස්තර ලබාගත්තා: '+no;
+ }catch(err){
+  $('lookupMsg').textContent='Lookup දෝෂයක්: '+(err?.message||String(err));
+ }
+}
+$('lookup').onclick=lookupExcelBatch;
+$('uploadExcel').onclick=importBatchExcel;
+$('batchNo').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();lookupExcelBatch()}});
+$('batchNo').addEventListener('change',lookupExcelBatch);
+updateBatchMasterCount();
 function add(no,vals){let old=records[no],r=old||{batchNo:no,failCount:0,history:[],createdAt:Date.now()};Object.assign(r,vals,{batchNo:no,updatedAt:Date.now()});if(vals.status==='FAILED'&&(!old||old.status!=='FAILED'))r.failCount=(r.failCount||0)+1;r.history.push({status:vals.status,at:Date.now(),comment:vals.comment||''});records[no]=r;persist()}
-$('save').onclick=()=>{let no=$('batchNo').value.trim().toUpperCase();if(!no)return alert('Batch Number ඇතුළත් කරන්න');let old=records[no];let r=old||{batchNo:no,failCount:0,history:[],createdAt:Date.now()};const shadeChoice=$('status').value;const hoursRaw=$('testingHours').value.trim();const hours=Number(hoursRaw);if(shadeChoice==='SHADE OK'&&(!hoursRaw||!Number.isFinite(hours)||hours<1||hours>168))return alert('SHADE OK කිරීමට පෙර Testing අවසන් කළ යුතු පැය ගණන 1 සිට 168 අතර ඇතුළත් කරන්න.');Object.assign(r,{colour:$('colour').value,fabric:$('fabric').value,style:$('style').value,weight:$('weight').value,shadeStatus:shadeChoice,testingHours:shadeChoice==='SHADE OK'?hours:null,testingDeadlineAt:shadeChoice==='SHADE OK'?Date.now()+hours*3600000:null,testingDelayAt:null,testingDelayMinutes:null,comment:$('comment').value,updatedAt:Date.now()});r.status=r.shadeStatus==='SHADE OK'?'SHADE OK – LAB CONFIRM REQUIRED':'SHADE PENDING';r.history.push({status:r.shadeStatus,at:Date.now(),comment:r.comment||''});records[no]=r;persist();alert('Shade තීරණය Save කළා');};
+$('save').onclick=()=>{let no=$('batchNo').value.trim().toUpperCase();if(!no)return alert('Batch Number ඇතුළත් කරන්න');let old=records[no];let r=old||{batchNo:no,failCount:0,history:[],createdAt:Date.now()};const shadeChoice=$('status').value;const hoursRaw=$('testingHours').value.trim();const hours=Number(hoursRaw);if(shadeChoice==='SHADE OK'&&(!hoursRaw||!Number.isFinite(hours)||hours<1||hours>168))return alert('SHADE OK කිරීමට පෙර Testing අවසන් කළ යුතු පැය ගණන 1 සිට 168 අතර ඇතුළත් කරන්න.');Object.assign(r,{colour:$('colour').value,fabric:$('fabric').value,style:$('style').value,weight:$('weight').value,customer:$('customer').value,shadeStatus:shadeChoice,testingHours:shadeChoice==='SHADE OK'?hours:null,testingDeadlineAt:shadeChoice==='SHADE OK'?Date.now()+hours*3600000:null,testingDelayAt:null,testingDelayMinutes:null,comment:$('comment').value,updatedAt:Date.now()});r.status=r.shadeStatus==='SHADE OK'?'SHADE OK – LAB CONFIRM REQUIRED':'SHADE PENDING';r.history.push({status:r.shadeStatus,at:Date.now(),comment:r.comment||''});records[no]=r;persist();alert('Shade තීරණය Save කළා');};
 $('bulkSave').onclick=()=>{
  if(loggedInDept!=='admin')return alert('මෙම ක්‍රියාව ADMIN සඳහා පමණයි.');
  const nums=[...new Set($('bulk').value.split(/[\\s,;]+/).map(x=>x.trim().toUpperCase()).filter(Boolean))];
