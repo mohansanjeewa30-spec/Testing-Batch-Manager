@@ -178,9 +178,7 @@
 </dialog>
 <script>
 const KEY='tbm_design_preview_v1';
-// v52 fresh testing setup: clear old preview Batch records and read markers once; keep department passwords/settings.
-const V52_RESET_KEY='tbm_v52_test_data_reset_done';
-if(!localStorage.getItem(V52_RESET_KEY)){localStorage.removeItem(KEY);localStorage.setItem(V52_RESET_KEY,'1')}
+// Existing Testing Records are preserved. Do not run the old one-time reset here.
 let records={};try{records=JSON.parse(localStorage.getItem(KEY)||'{}')}catch(e){}
 
 const $=id=>document.getElementById(id);
